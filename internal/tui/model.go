@@ -66,6 +66,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+u":
 			half := maxInt(m.height/2, 1)
 			m.cursor = maxInt(m.cursor-half, 0)
+		case "0":
+			m.filter = Filter{All: true}
+			m.cursor = 0
+		case "1":
+			m.filter = Filter{Statuses: []model.Status{model.StatusBacklog}}
+			m.cursor = 0
+		case "2":
+			m.filter = Filter{Statuses: []model.Status{model.StatusPending}}
+			m.cursor = 0
+		case "3":
+			m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+			m.cursor = 0
+		case "4":
+			m.filter = Filter{Statuses: []model.Status{model.StatusBlocked}}
+			m.cursor = 0
+		case "5":
+			m.filter = Filter{Statuses: []model.Status{model.StatusDone}}
+			m.cursor = 0
+		case "6":
+			m.filter = Filter{Statuses: []model.Status{model.StatusCancelled}}
+			m.cursor = 0
+		case "esc":
+			m.filter = DefaultFilter()
+			m.cursor = 0
 		}
 	}
 	return m, nil
