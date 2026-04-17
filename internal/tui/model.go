@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"path/filepath"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/npaolopepito/himo/internal/model"
@@ -20,17 +22,38 @@ func DefaultFilter() Filter {
 
 // Model is the top-level Bubble Tea model.
 type Model struct {
-	project *store.Project
-	filter  Filter
-	cursor  int
-	width   int
-	height  int
-	quit    bool
+	project  *store.Project
+	filter   Filter
+	cursor   int
+	width    int
+	height   int
+	quit     bool
+	baseDir  string
+	projects []string
 }
 
 // NewModel builds a fresh Model for the given project.
 func NewModel(p *store.Project) Model {
 	return Model{project: p, filter: DefaultFilter()}
+}
+
+// NewModelFromBase loads the named project from baseDir and returns a Model
+// seeded with the list of sibling projects for Tab cycling.
+func NewModelFromBase(baseDir, name string) (Model, error) {
+	p, err := store.LoadProject(filepath.Join(baseDir, name))
+	if err != nil {
+		return Model{}, err
+	}
+	projects, err := store.ListProjects(baseDir)
+	if err != nil {
+		return Model{}, err
+	}
+	return Model{
+		project:  p,
+		filter:   DefaultFilter(),
+		baseDir:  baseDir,
+		projects: projects,
+	}, nil
 }
 
 func (m Model) Init() tea.Cmd { return nil }
@@ -90,6 +113,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			m.filter = DefaultFilter()
 			m.cursor = 0
+		case "tab":
+			m.switchProject(+1)
+		case "shift+tab":
+			m.switchProject(-1)
 		}
 	}
 	return m, nil
@@ -100,6 +127,31 @@ func (m Model) View() string {
 		return ""
 	}
 	return renderView(m)
+}
+
+// switchProject cycles m.project by delta through m.projects, in place.
+// Delta of +1 is next, -1 is previous; wraps around.
+func (m *Model) switchProject(delta int) {
+	if len(m.projects) == 0 {
+		return
+	}
+	idx := -1
+	for i, n := range m.projects {
+		if n == m.project.Name {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		idx = 0
+	}
+	next := (idx + delta + len(m.projects)) % len(m.projects)
+	p, err := store.LoadProject(filepath.Join(m.baseDir, m.projects[next]))
+	if err != nil {
+		return
+	}
+	m.project = p
+	m.cursor = 0
 }
 
 func (m Model) visibleTasks() []model.Task {
