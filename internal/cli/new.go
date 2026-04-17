@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,10 +16,10 @@ func NewProject(baseDir, name string) error {
 		return fmt.Errorf("invalid project name: %q", name)
 	}
 	dir := filepath.Join(baseDir, name)
-	if _, err := os.Stat(dir); err == nil {
-		return fmt.Errorf("project %q already exists", name)
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return fmt.Errorf("project %q already exists", name)
+		}
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, "active.md"), nil, 0o644)

@@ -9,6 +9,9 @@ import (
 	"github.com/npaolopepito/himo/internal/model"
 )
 
+// allFiles lists the three filenames that make up a project, in a fixed order.
+var allFiles = [...]string{"active.md", "backlog.md", "done.md"}
+
 // Project is a loaded project (three parsed documents).
 type Project struct {
 	Name    string
@@ -60,7 +63,7 @@ func LoadProject(dir string) (*Project, error) {
 		Done:    done,
 		mtimes:  make(map[string]time.Time),
 	}
-	for _, name := range []string{"active.md", "backlog.md", "done.md"} {
+	for _, name := range allFiles {
 		info, err := os.Stat(filepath.Join(dir, name))
 		if err == nil {
 			p.mtimes[name] = info.ModTime()
@@ -82,9 +85,6 @@ func (p *Project) AllTasks() []model.Task {
 // `today` is the YYYY-MM-DD string used when inserting newly-done tasks into
 // done.md under today's heading.
 func Normalize(p *Project, today string) error {
-	// For each document, walk its items and collect the ones whose status
-	// points to a different file. Remove them from the source, add them to
-	// the target.
 	var activeOut, backlogOut, doneOut []Item
 	movers := map[FileName][]TaskItem{}
 
@@ -108,11 +108,11 @@ func Normalize(p *Project, today string) error {
 
 	// Apply incoming tasks to each destination.
 	for _, ti := range movers[FileActive] {
-		ti = canonicalizeForActive(ti)
+		ti = canonicalizeOutgoing(ti)
 		activeOut = append(activeOut, ti)
 	}
 	for _, ti := range movers[FileBacklog] {
-		ti = canonicalizeForBacklog(ti)
+		ti = canonicalizeOutgoing(ti)
 		backlogOut = append(backlogOut, ti)
 	}
 
@@ -123,15 +123,8 @@ func Normalize(p *Project, today string) error {
 	return nil
 }
 
-func canonicalizeForActive(ti TaskItem) TaskItem {
-	// Ensure the first raw line matches "- [marker] title".
-	ti.RawLines[0] = fmt.Sprintf("- %s %s", ti.Task.Status.Marker(), ti.Task.Title)
-	ti.Task.Date = ""
-	return ti
-}
-
-func canonicalizeForBacklog(ti TaskItem) TaskItem {
-	ti.RawLines[0] = fmt.Sprintf("- %s", ti.Task.Title)
+func canonicalizeOutgoing(ti TaskItem) TaskItem {
+	ti.RawLines[0] = RenderTaskLine(ti.Task)
 	ti.Task.Date = ""
 	return ti
 }
@@ -142,11 +135,10 @@ func insertDone(doc *Document, incoming []TaskItem, today string) *Document {
 	if len(incoming) == 0 {
 		return doc
 	}
-	// Stamp the tasks with today's date and canonicalize their raw line.
 	stamped := make([]Item, 0, len(incoming))
 	for _, ti := range incoming {
 		ti.Task.Date = today
-		ti.RawLines[0] = fmt.Sprintf("- %s %s", ti.Task.Status.Marker(), ti.Task.Title)
+		ti.RawLines[0] = RenderTaskLine(ti.Task)
 		stamped = append(stamped, ti)
 	}
 	// If a heading for `today` already exists, insert directly after it.

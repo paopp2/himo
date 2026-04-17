@@ -32,7 +32,7 @@ type lineParser func(line string) (Item, bool)
 
 func parseDoc(b []byte, lp lineParser) (*Document, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(b))
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	scanner.Buffer(nil, 1024*1024)
 
 	var items []Item
 	var opaqueBuf []string
@@ -57,7 +57,6 @@ func parseDoc(b []byte, lp lineParser) (*Document, error) {
 		// Indented content: belongs to the current task as notes, otherwise opaque.
 		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') && currentTask != nil {
 			currentTask.RawLines = append(currentTask.RawLines, line)
-			currentTask.Task.Notes += line + "\n"
 			continue
 		}
 
@@ -66,7 +65,6 @@ func parseDoc(b []byte, lp lineParser) (*Document, error) {
 		// current task tentatively; if the next line is non-indented, we flush.
 		if line == "" && currentTask != nil {
 			currentTask.RawLines = append(currentTask.RawLines, line)
-			currentTask.Task.Notes += "\n"
 			continue
 		}
 
@@ -97,7 +95,9 @@ func parseDoc(b []byte, lp lineParser) (*Document, error) {
 	// Trim trailing blank notes lines from each task (attached tentatively).
 	for i := range items {
 		if ti, ok := items[i].(TaskItem); ok {
-			ti.Task.Notes = strings.TrimRight(ti.Task.Notes, "\n")
+			if len(ti.RawLines) > 1 {
+				ti.Task.Notes = strings.TrimRight(strings.Join(ti.RawLines[1:], "\n"), "\n")
+			}
 			items[i] = ti
 		}
 	}

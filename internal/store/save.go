@@ -20,7 +20,7 @@ func IsConflict(err error) bool {
 // ErrConflict without writing anything.
 func SaveProject(p *Project) error {
 	// Conflict check phase.
-	for _, name := range []string{"active.md", "backlog.md", "done.md"} {
+	for _, name := range allFiles {
 		info, err := os.Stat(filepath.Join(p.Dir, name))
 		if os.IsNotExist(err) {
 			continue
@@ -47,7 +47,7 @@ func SaveProject(p *Project) error {
 		}
 	}
 	// Refresh mtimes so subsequent saves don't spuriously conflict.
-	for _, name := range []string{"active.md", "backlog.md", "done.md"} {
+	for _, name := range allFiles {
 		if info, err := os.Stat(filepath.Join(p.Dir, name)); err == nil {
 			p.mtimes[name] = info.ModTime()
 		}

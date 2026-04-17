@@ -44,7 +44,7 @@ func Load(path string) (*Config, error) {
 	if v := os.Getenv("EDITOR"); v != "" && cfg.Editor == "" {
 		cfg.Editor = v
 	}
-	cfg.BaseDir = expandHome(cfg.BaseDir)
+	cfg.BaseDir = ExpandHome(cfg.BaseDir)
 	return cfg, nil
 }
 
@@ -61,7 +61,8 @@ func Save(cfg *Config) error {
 	return toml.NewEncoder(f).Encode(cfg)
 }
 
-func expandHome(p string) string {
+// ExpandHome replaces a leading "~/" in p with the user's home directory.
+func ExpandHome(p string) string {
 	if strings.HasPrefix(p, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {
 			return filepath.Join(home, p[2:])

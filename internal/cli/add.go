@@ -19,9 +19,10 @@ func AddTask(baseDir, project, title string) error {
 	if err != nil {
 		return err
 	}
+	task := model.Task{Status: model.StatusPending, Title: title}
 	ti := store.TaskItem{
-		Task:     model.Task{Status: model.StatusPending, Title: title},
-		RawLines: []string{fmt.Sprintf("- [ ] %s", title)},
+		Task:     task,
+		RawLines: []string{store.RenderTaskLine(task)},
 	}
 	p.Active.Items = append(p.Active.Items, ti)
 	return store.SaveProject(p)

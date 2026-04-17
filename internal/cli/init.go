@@ -30,9 +30,7 @@ func Init(in io.Reader, out io.Writer) error {
 	if line == "" {
 		line = defaultBase
 	}
-	if strings.HasPrefix(line, "~/") {
-		line = filepath.Join(home, line[2:])
-	}
+	line = config.ExpandHome(line)
 
 	if err := os.MkdirAll(line, 0o755); err != nil {
 		return fmt.Errorf("create base dir: %w", err)

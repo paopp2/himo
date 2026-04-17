@@ -15,7 +15,7 @@ func Ls(baseDir, project, status string, out io.Writer) error {
 	var wanted model.Status
 	filtered := false
 	if status != "" {
-		s, ok := parseStatus(status)
+		s, ok := model.ParseStatusName(status)
 		if !ok {
 			return fmt.Errorf("unknown status: %q", status)
 		}
@@ -50,22 +50,4 @@ func Ls(baseDir, project, status string, out io.Writer) error {
 		}
 	}
 	return nil
-}
-
-func parseStatus(s string) (model.Status, bool) {
-	switch s {
-	case "pending":
-		return model.StatusPending, true
-	case "active":
-		return model.StatusActive, true
-	case "blocked":
-		return model.StatusBlocked, true
-	case "backlog":
-		return model.StatusBacklog, true
-	case "done":
-		return model.StatusDone, true
-	case "cancelled":
-		return model.StatusCancelled, true
-	}
-	return 0, false
 }

@@ -29,6 +29,25 @@ func (s Status) String() string {
 	return "unknown"
 }
 
+// ParseStatusName returns the Status matching the name (the inverse of String).
+func ParseStatusName(s string) (Status, bool) {
+	switch s {
+	case "pending":
+		return StatusPending, true
+	case "active":
+		return StatusActive, true
+	case "blocked":
+		return StatusBlocked, true
+	case "backlog":
+		return StatusBacklog, true
+	case "done":
+		return StatusDone, true
+	case "cancelled":
+		return StatusCancelled, true
+	}
+	return 0, false
+}
+
 func (s Status) Marker() string {
 	switch s {
 	case StatusPending:
