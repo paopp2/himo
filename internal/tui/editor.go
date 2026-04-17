@@ -21,11 +21,10 @@ type editorCmd struct {
 
 // resolveEditor picks the program + leading args from $EDITOR, defaulting to vi.
 func resolveEditor() (prog string, args []string) {
-	e := os.Getenv("EDITOR")
-	if e == "" {
-		e = "vi"
+	parts := strings.Fields(os.Getenv("EDITOR"))
+	if len(parts) == 0 {
+		return "vi", nil
 	}
-	parts := strings.Fields(e)
 	return parts[0], parts[1:]
 }
 

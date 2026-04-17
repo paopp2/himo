@@ -57,6 +57,14 @@ func TestEditorReturn_reloadsEditedProject(t *testing.T) {
 	}
 }
 
+func TestResolveEditor_whitespaceFallsBackToVi(t *testing.T) {
+	t.Setenv("EDITOR", "   ")
+	prog, args := resolveEditor()
+	if prog != "vi" || len(args) != 0 {
+		t.Errorf("got %q %v, want vi []", prog, args)
+	}
+}
+
 func TestEditorCmd_notesLocation(t *testing.T) {
 	m := NewModel(testProject(t))
 	cmd, err := m.editorCmdForNotes()
