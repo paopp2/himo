@@ -3,13 +3,24 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/npaolopepito/himo/internal/model"
 )
 
 func renderView(m Model) string {
 	tasks := m.visibleTasks()
+	listStr := renderList(m, tasks)
+	if m.width < 100 || m.hidePreview {
+		return listStr
+	}
+	previewStr := renderPreview(m, tasks)
+	return sideBySide(listStr, previewStr, m.width)
+}
+
+func renderList(m Model, tasks []model.Task) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "himo  %s  %s  %d tasks\n", m.project.Name, filterLabel(m.filter), len(tasks))
-	b.WriteString(strings.Repeat("-", minInt(m.width, 60)))
+	b.WriteString(strings.Repeat("-", 60))
 	b.WriteByte('\n')
 	for i, t := range tasks {
 		prefix := "  "
@@ -25,6 +36,49 @@ func renderView(m Model) string {
 			note = " N "
 		}
 		fmt.Fprintf(&b, "%s%s %s%s\n", prefix, marker, t.Title, note)
+	}
+	return b.String()
+}
+
+func renderPreview(m Model, tasks []model.Task) string {
+	if len(tasks) == 0 || m.cursor >= len(tasks) {
+		return "Notes:\n(no task selected)"
+	}
+	t := tasks[m.cursor]
+	if !t.HasNotes() {
+		return "Notes: " + t.Title + "\n\n(no notes - press Enter to add)"
+	}
+	lines := strings.Split(t.Notes, "\n")
+	for i, ln := range lines {
+		lines[i] = strings.TrimPrefix(ln, "    ")
+	}
+	return "Notes: " + t.Title + "\n\n" + strings.Join(lines, "\n")
+}
+
+func sideBySide(left, right string, width int) string {
+	leftW := width * 60 / 100
+	rightW := width - leftW - 3
+	leftLines := strings.Split(left, "\n")
+	rightLines := strings.Split(right, "\n")
+	n := maxInt(len(leftLines), len(rightLines))
+	var b strings.Builder
+	for i := 0; i < n; i++ {
+		var l, r string
+		if i < len(leftLines) {
+			l = leftLines[i]
+		}
+		if i < len(rightLines) {
+			r = rightLines[i]
+		}
+		if len(l) > leftW {
+			l = l[:leftW]
+		} else {
+			l = l + strings.Repeat(" ", leftW-len(l))
+		}
+		if len(r) > rightW {
+			r = r[:rightW]
+		}
+		fmt.Fprintf(&b, "%s | %s\n", l, r)
 	}
 	return b.String()
 }

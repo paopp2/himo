@@ -22,14 +22,15 @@ func DefaultFilter() Filter {
 
 // Model is the top-level Bubble Tea model.
 type Model struct {
-	project  *store.Project
-	filter   Filter
-	cursor   int
-	width    int
-	height   int
-	quit     bool
-	baseDir  string
-	projects []string
+	project     *store.Project
+	filter      Filter
+	cursor      int
+	width       int
+	height      int
+	quit        bool
+	baseDir     string
+	projects    []string
+	hidePreview bool
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -117,6 +118,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.switchProject(+1)
 		case "shift+tab":
 			m.switchProject(-1)
+		case "v":
+			m.hidePreview = !m.hidePreview
 		}
 	}
 	return m, nil
