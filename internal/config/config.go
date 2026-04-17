@@ -21,11 +21,14 @@ type Config struct {
 
 // DefaultPath returns the canonical config file location.
 func DefaultPath() (string, error) {
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve user config dir: %w", err)
+	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
+		return filepath.Join(v, "himo", "config.toml"), nil
 	}
-	return filepath.Join(base, "himo", "config.toml"), nil
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve home dir: %w", err)
+	}
+	return filepath.Join(home, ".config", "himo", "config.toml"), nil
 }
 
 // Load reads config.toml and applies env overrides. Returns os.ErrNotExist
