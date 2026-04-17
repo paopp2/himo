@@ -1,0 +1,206 @@
+package store
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/npaolopepito/himo/internal/model"
+)
+
+// Project is a loaded project (three parsed documents).
+type Project struct {
+	Name    string
+	Dir     string
+	Active  *Document
+	Backlog *Document
+	Done    *Document
+}
+
+// LoadProject parses the three files in a project directory. Missing files
+// are treated as empty.
+func LoadProject(dir string) (*Project, error) {
+	info, err := os.Stat(dir)
+	if err != nil {
+		return nil, fmt.Errorf("stat project: %w", err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("%s: not a directory", dir)
+	}
+	load := func(name string, parse func([]byte) (*Document, error)) (*Document, error) {
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if os.IsNotExist(err) {
+			return &Document{}, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", name, err)
+		}
+		return parse(b)
+	}
+	active, err := load("active.md", ParseActive)
+	if err != nil {
+		return nil, err
+	}
+	backlog, err := load("backlog.md", ParseBacklog)
+	if err != nil {
+		return nil, err
+	}
+	done, err := load("done.md", ParseDone)
+	if err != nil {
+		return nil, err
+	}
+	return &Project{
+		Name:    filepath.Base(dir),
+		Dir:     dir,
+		Active:  active,
+		Backlog: backlog,
+		Done:    done,
+	}, nil
+}
+
+// AllTasks returns every task in the project across all three files.
+func (p *Project) AllTasks() []*model.Task {
+	var out []*model.Task
+	out = append(out, p.Active.Tasks()...)
+	out = append(out, p.Backlog.Tasks()...)
+	out = append(out, p.Done.Tasks()...)
+	return out
+}
+
+// Normalize moves task items that are in the wrong file for their status.
+// `today` is the YYYY-MM-DD string used when inserting newly-done tasks into
+// done.md under today's heading.
+func Normalize(p *Project, today string) error {
+	// For each document, walk its items and collect the ones whose status
+	// points to a different file. Remove them from the source, add them to
+	// the target.
+	var activeOut, backlogOut, doneOut []Item
+	movers := map[FileName][]TaskItem{}
+
+	partition := func(src *Document, self FileName) []Item {
+		var kept []Item
+		for _, it := range src.Items {
+			if ti, ok := it.(TaskItem); ok {
+				target := TargetFile(ti.Task.Status)
+				if target != self {
+					movers[target] = append(movers[target], ti)
+					continue
+				}
+			}
+			kept = append(kept, it)
+		}
+		return kept
+	}
+	activeOut = partition(p.Active, FileActive)
+	backlogOut = partition(p.Backlog, FileBacklog)
+	doneOut = partition(p.Done, FileDone)
+
+	// Apply incoming tasks to each destination.
+	for _, ti := range movers[FileActive] {
+		ti = canonicalizeForActive(ti)
+		activeOut = append(activeOut, ti)
+	}
+	for _, ti := range movers[FileBacklog] {
+		ti = canonicalizeForBacklog(ti)
+		backlogOut = append(backlogOut, ti)
+	}
+
+	p.Active = &Document{Items: activeOut}
+	p.Backlog = &Document{Items: backlogOut}
+	p.Done = insertDone(&Document{Items: doneOut}, movers[FileDone], today)
+	p.Done = pruneEmptyDateHeadings(p.Done)
+	return nil
+}
+
+func canonicalizeForActive(ti TaskItem) TaskItem {
+	// Ensure the first raw line matches "- [marker] title".
+	ti.RawLines[0] = fmt.Sprintf("- %s %s", ti.Task.Status.Marker(), ti.Task.Title)
+	ti.Task.Date = ""
+	return ti
+}
+
+func canonicalizeForBacklog(ti TaskItem) TaskItem {
+	ti.RawLines[0] = fmt.Sprintf("- %s", ti.Task.Title)
+	ti.Task.Date = ""
+	return ti
+}
+
+// insertDone places newly-done tasks at the top of done.md, under a heading
+// for today (creating it if necessary).
+func insertDone(doc *Document, incoming []TaskItem, today string) *Document {
+	if len(incoming) == 0 {
+		return doc
+	}
+	// Stamp the tasks with today's date and canonicalize their raw line.
+	stamped := make([]Item, 0, len(incoming))
+	for _, ti := range incoming {
+		ti.Task.Date = today
+		ti.RawLines[0] = fmt.Sprintf("- %s %s", ti.Task.Status.Marker(), ti.Task.Title)
+		stamped = append(stamped, ti)
+	}
+	// If a heading for `today` already exists, insert directly after it.
+	for i, it := range doc.Items {
+		if h, ok := it.(DateHeading); ok && h.Date == today {
+			out := &Document{Items: make([]Item, 0, len(doc.Items)+len(stamped))}
+			out.Items = append(out.Items, doc.Items[:i+1]...)
+			out.Items = append(out.Items, stamped...)
+			out.Items = append(out.Items, doc.Items[i+1:]...)
+			return out
+		}
+	}
+	// Else prepend a new heading and the tasks.
+	out := &Document{Items: make([]Item, 0, len(doc.Items)+len(stamped)+2)}
+	out.Items = append(out.Items, DateHeading{Date: today, RawLine: "# " + today})
+	out.Items = append(out.Items, stamped...)
+	if len(doc.Items) > 0 {
+		out.Items = append(out.Items, OpaqueLines{Lines: []string{""}}) // blank separator
+		out.Items = append(out.Items, doc.Items...)
+	}
+	return out
+}
+
+// pruneEmptyDateHeadings removes DateHeading items that have no TaskItems
+// between them and the next heading (or end of doc).
+func pruneEmptyDateHeadings(doc *Document) *Document {
+	out := &Document{Items: make([]Item, 0, len(doc.Items))}
+	for i := 0; i < len(doc.Items); i++ {
+		if h, ok := doc.Items[i].(DateHeading); ok {
+			hasTasks := false
+			for j := i + 1; j < len(doc.Items); j++ {
+				if _, isH := doc.Items[j].(DateHeading); isH {
+					break
+				}
+				if _, isT := doc.Items[j].(TaskItem); isT {
+					hasTasks = true
+					break
+				}
+			}
+			if !hasTasks {
+				continue
+			}
+			_ = h
+		}
+		out.Items = append(out.Items, doc.Items[i])
+	}
+	return out
+}
+
+// SaveProject writes all three files (minimal implementation; Task 11 adds
+// atomicity and mtime conflict checking).
+func SaveProject(p *Project) error {
+	writes := []struct {
+		name string
+		doc  *Document
+	}{
+		{"active.md", p.Active},
+		{"backlog.md", p.Backlog},
+		{"done.md", p.Done},
+	}
+	for _, w := range writes {
+		path := filepath.Join(p.Dir, w.name)
+		if err := os.WriteFile(path, Render(w.doc), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", w.name, err)
+		}
+	}
+	return nil
+}
