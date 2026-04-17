@@ -7,7 +7,46 @@ import (
 	"github.com/npaolopepito/himo/internal/model"
 )
 
+const helpText = `Keybindings:
+
+Navigation
+  j/k        move cursor down/up
+  g/G        top/bottom
+  Ctrl+d/u   half page down/up
+  /          search
+  q          quit
+
+Scope
+  Tab/S-Tab  prev/next project
+  P          project picker
+  A          all-projects view
+
+Filters
+  0          all
+  1          backlog
+  2          pending
+  3          active
+  4          blocked
+  5          done
+  6          cancelled
+  Esc        default (pending+active+blocked)
+
+Actions
+  Enter      open task notes in $EDITOR
+  e          open current-filter file in $EDITOR
+  Space      cycle status forward
+  b/p/a      backlog / pending / active
+  !/x/-      blocked / done / cancelled
+  o/O        new task below / above
+  d          delete (y/n confirm)
+  v          toggle preview pane
+  ?          toggle this help
+`
+
 func renderView(m Model) string {
+	if m.showingHelp {
+		return helpText
+	}
 	tasks := m.visibleTasks()
 	listStr := renderList(m, tasks)
 	var view string

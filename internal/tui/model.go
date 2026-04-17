@@ -41,6 +41,7 @@ type Model struct {
 	searching        bool
 	searchBuf        string
 	searchActive     string
+	showingHelp      bool
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -200,6 +201,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchBuf = ""
 		case "d":
 			m.confirmingDelete = true
+		case "?":
+			m.showingHelp = !m.showingHelp
 		case "enter":
 			ec, err := m.editorCmdForNotes()
 			if err != nil {
