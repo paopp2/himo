@@ -430,14 +430,31 @@ func (m *Model) deleteCurrent() {
 	}
 }
 
-// insertNewTask appends a pending task to active.md and persists.
+// insertNewTask appends a new task to the document matching the current filter
+// (backlog.md when the filter is exclusively backlog, active.md otherwise) and
+// persists.
 func (m *Model) insertNewTask(title string) {
-	ti := store.TaskItem{
-		Task:     model.Task{Status: model.StatusPending, Title: title},
-		RawLines: []string{"- [ ] " + title},
+	if m.isBacklogFilter() {
+		ti := store.TaskItem{
+			Task:     model.Task{Status: model.StatusBacklog, Title: title},
+			RawLines: []string{"- " + title},
+		}
+		m.project.Backlog.Items = append(m.project.Backlog.Items, ti)
+	} else {
+		ti := store.TaskItem{
+			Task:     model.Task{Status: model.StatusPending, Title: title},
+			RawLines: []string{"- [ ] " + title},
+		}
+		m.project.Active.Items = append(m.project.Active.Items, ti)
 	}
-	m.project.Active.Items = append(m.project.Active.Items, ti)
 	_ = store.SaveProject(m.project)
+}
+
+// isBacklogFilter reports whether the current filter is exclusively backlog.
+func (m Model) isBacklogFilter() bool {
+	return !m.filter.All &&
+		len(m.filter.Statuses) == 1 &&
+		m.filter.Statuses[0] == model.StatusBacklog
 }
 
 // filteredProjects returns project names that contain pickerFilter (case-insensitive).
