@@ -61,6 +61,19 @@ func main() {
 			fmt.Fprintln(os.Stderr, "himo add:", err)
 			os.Exit(1)
 		}
+	case "ls":
+		fs := flag.NewFlagSet("ls", flag.ExitOnError)
+		project := fs.String("p", "", "project name (default: all projects)")
+		status := fs.String("s", "", "filter by status (pending, active, blocked, backlog, done, cancelled)")
+		fs.Parse(os.Args[2:])
+		cfg, err := loadConfigOrExit()
+		if err != nil {
+			os.Exit(1)
+		}
+		if err := cli.Ls(cfg.BaseDir, *project, *status, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "himo ls:", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintln(os.Stderr, "himo: unknown command", os.Args[1])
 		os.Exit(1)
