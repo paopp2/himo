@@ -36,3 +36,35 @@ func TestParseActive_basic(t *testing.T) {
 		}
 	}
 }
+
+func TestParseActive_notes(t *testing.T) {
+	b, err := os.ReadFile("testdata/active_with_notes.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := ParseActive(b)
+	if err != nil {
+		t.Fatalf("ParseActive: %v", err)
+	}
+	tasks := doc.Tasks()
+	if len(tasks) != 3 {
+		t.Fatalf("got %d tasks, want 3", len(tasks))
+	}
+
+	wantNotes := []string{
+		"    Due Friday. Talk to Sam first.\n\n    - Storage model concerns\n    - Parser round-tripping",
+		"    Check fridge.",
+		"",
+	}
+	for i, want := range wantNotes {
+		if tasks[i].Notes != want {
+			t.Errorf("task %d notes:\n got: %q\nwant: %q", i, tasks[i].Notes, want)
+		}
+	}
+	if !tasks[0].HasNotes() {
+		t.Errorf("task 0 HasNotes = false, want true")
+	}
+	if tasks[2].HasNotes() {
+		t.Errorf("task 2 HasNotes = true, want false")
+	}
+}
