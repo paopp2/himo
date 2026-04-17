@@ -304,8 +304,6 @@ func (m Model) View() string {
 	return renderView(m)
 }
 
-// switchProject cycles m.project by delta through m.projects, in place.
-// Delta of +1 is next, -1 is previous; wraps around.
 func (m *Model) switchProject(delta int) {
 	if len(m.projects) == 0 {
 		return
@@ -330,16 +328,12 @@ func (m *Model) switchProject(delta int) {
 	m.cursor = 0
 }
 
-// taskLoc locates a TaskItem by its (project, document, index) position.
 type taskLoc struct {
 	proj *store.Project
 	doc  *store.Document
 	idx  int
 }
 
-// visibleTaskLocations walks Active, Backlog, Done in order and returns one
-// taskLoc per TaskItem whose status passes the current filter. In all-projects
-// mode, the walk spans every project in allProjectsCache.
 func (m Model) visibleTaskLocations() []taskLoc {
 	projects := []*store.Project{m.project}
 	if m.allProjects {
@@ -385,8 +379,7 @@ func (m Model) visibleTasks() []model.Task {
 	return out
 }
 
-// currentTaskItem returns the (project, document, index) of the task under the
-// cursor, or (nil, nil, -1, false) if the cursor is out of range.
+// currentTaskItem returns the cursor's task location, or ok=false if out of range.
 func (m Model) currentTaskItem() (*store.Project, *store.Document, int, bool) {
 	locs := m.visibleTaskLocations()
 	if m.cursor < 0 || m.cursor >= len(locs) {
@@ -396,8 +389,7 @@ func (m Model) currentTaskItem() (*store.Project, *store.Document, int, bool) {
 	return loc.proj, loc.doc, loc.idx, true
 }
 
-// setStatus changes the highlighted task's status, updates its rendered line,
-// re-normalizes, and persists. No-op if no task is selected.
+// setStatus changes the cursor task's status, normalizes, and saves.
 func (m *Model) setStatus(s model.Status) {
 	proj, doc, idx, ok := m.currentTaskItem()
 	if !ok {
@@ -465,8 +457,7 @@ func today() string {
 	return time.Now().Format("2006-01-02")
 }
 
-// updatePrompt handles keystrokes while the new-task prompt is active.
-// Returns the updated model; Enter commits via insertNewTask, Esc cancels.
+// updatePrompt handles a keystroke while the new-task prompt is active.
 func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc:
@@ -512,11 +503,6 @@ func (m *Model) deleteCurrent() {
 	}
 }
 
-// insertNewTask inserts a new task into the document matching the current
-// filter (backlog.md when the filter is exclusively backlog, active.md
-// otherwise) and persists. In all-projects mode the owner is the cursor task's
-// project. When promptAbove is set the task lands at the cursor's position in
-// the target document (append otherwise).
 func (m *Model) insertNewTask(title string) {
 	target := m.project
 	cursorProj, cursorDoc, cursorIdx, haveCursor := m.currentTaskItem()
@@ -552,7 +538,6 @@ func insertAtSlice(s []store.Item, idx int, it store.Item) []store.Item {
 	return s
 }
 
-// isBacklogFilter reports whether the current filter is exclusively backlog.
 func (m Model) isBacklogFilter() bool {
 	return !m.filter.All &&
 		len(m.filter.Statuses) == 1 &&
@@ -620,7 +605,6 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 	return m
 }
 
-// enterAllProjects loads every project listed under baseDir into the cache.
 func (m *Model) enterAllProjects() {
 	if m.baseDir == "" {
 		return
@@ -630,16 +614,12 @@ func (m *Model) enterAllProjects() {
 	m.cursor = 0
 }
 
-// exitAllProjects clears the cache and restores single-project mode.
 func (m *Model) exitAllProjects() {
 	m.allProjects = false
 	m.allProjectsCache = nil
 	m.cursor = 0
 }
 
-// reloadAllProjects refreshes the allProjectsCache from disk. On ListProjects
-// failure the cache is left untouched; per-project load failures are
-// accumulated into the banner.
 func (m *Model) reloadAllProjects() {
 	names, err := store.ListProjects(m.baseDir)
 	if err != nil {

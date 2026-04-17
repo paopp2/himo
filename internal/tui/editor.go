@@ -39,7 +39,6 @@ func buildEditorCmd(path string, line int) *exec.Cmd {
 	return exec.Command(prog, args...)
 }
 
-// editorCmdForNotes resolves the file+line of the highlighted task.
 func (m Model) editorCmdForNotes() (editorCmd, error) {
 	proj, doc, idx, ok := m.currentTaskItem()
 	if !ok {
@@ -95,8 +94,6 @@ func taskLineInFile(doc *store.Document, idx int) (int, error) {
 	return 0, fmt.Errorf("item %d not found", idx)
 }
 
-// openEditor returns a tea.Cmd that suspends the TUI, runs $EDITOR, and then
-// delivers an editorReturnedMsg.
 func (m Model) openEditor(ec editorCmd) tea.Cmd {
 	c := buildEditorCmd(ec.Path, ec.Line)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
@@ -104,7 +101,6 @@ func (m Model) openEditor(ec editorCmd) tea.Cmd {
 	})
 }
 
-// editorReturnedMsg signals that the editor subprocess has exited.
 type editorReturnedMsg struct{ err error }
 
 // fileForFilter maps the filter to the file `e` should open within proj.
