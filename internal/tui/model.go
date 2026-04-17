@@ -40,9 +40,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyMsg:
-		if msg.String() == "q" || msg.String() == "ctrl+c" {
+		switch msg.String() {
+		case "q", "ctrl+c":
 			m.quit = true
 			return m, tea.Quit
+		case "j", "down":
+			if m.cursor+1 < len(m.visibleTasks()) {
+				m.cursor++
+			}
+		case "k", "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "g":
+			m.cursor = 0
+		case "G":
+			if n := len(m.visibleTasks()); n > 0 {
+				m.cursor = n - 1
+			}
+		case "ctrl+d":
+			half := maxInt(m.height/2, 1)
+			if n := len(m.visibleTasks()); n > 0 {
+				m.cursor = minInt(m.cursor+half, n-1)
+			}
+		case "ctrl+u":
+			half := maxInt(m.height/2, 1)
+			m.cursor = maxInt(m.cursor-half, 0)
 		}
 	}
 	return m, nil
