@@ -179,6 +179,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, m.openEditor(ec)
+		case "e":
+			path, err := m.fileForFilter()
+			if err != nil {
+				m.banner = err.Error()
+				return m, nil
+			}
+			return m, m.openEditor(editorCmd{Path: path, Line: 0})
 		}
 	}
 	return m, nil

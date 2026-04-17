@@ -104,3 +104,22 @@ func (m Model) openEditor(ec editorCmd) tea.Cmd {
 
 // editorReturnedMsg signals that the editor subprocess has exited.
 type editorReturnedMsg struct{ err error }
+
+// fileForFilter maps the current filter to the file `e` should open.
+// Returns an error when the filter is "all" (ambiguous — user picks 1-6 first).
+func (m Model) fileForFilter() (string, error) {
+	if m.filter.All {
+		return "", fmt.Errorf("choose a filter first (1-6) to pick a file")
+	}
+	if len(m.filter.Statuses) == 1 {
+		switch store.TargetFile(m.filter.Statuses[0]) {
+		case store.FileActive:
+			return filepath.Join(m.project.Dir, "active.md"), nil
+		case store.FileBacklog:
+			return filepath.Join(m.project.Dir, "backlog.md"), nil
+		case store.FileDone:
+			return filepath.Join(m.project.Dir, "done.md"), nil
+		}
+	}
+	return filepath.Join(m.project.Dir, "active.md"), nil
+}
