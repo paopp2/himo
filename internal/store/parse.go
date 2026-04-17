@@ -132,3 +132,31 @@ func parseBacklogLine(line string) (Item, bool) {
 	}
 	return nil, false
 }
+
+// ParseDone parses the contents of done.md. Task Date fields are set to the
+// current date heading the task appears under (empty if outside any heading).
+func ParseDone(b []byte) (*Document, error) {
+	doc, err := parseDoc(b, parseDoneLine)
+	if err != nil {
+		return nil, err
+	}
+	// Walk items and propagate the current date heading to each TaskItem.
+	currentDate := ""
+	for i := range doc.Items {
+		switch it := doc.Items[i].(type) {
+		case DateHeading:
+			currentDate = it.Date
+		case TaskItem:
+			it.Task.Date = currentDate
+			doc.Items[i] = it
+		}
+	}
+	return doc, nil
+}
+
+func parseDoneLine(line string) (Item, bool) {
+	if m := dateHeadingRe.FindStringSubmatch(line); m != nil {
+		return DateHeading{Date: m[1], RawLine: line}, true
+	}
+	return parseActiveLine(line)
+}

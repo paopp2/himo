@@ -94,3 +94,35 @@ func TestParseBacklog_basic(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDone_basic(t *testing.T) {
+	b, err := os.ReadFile("testdata/done_basic.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := ParseDone(b)
+	if err != nil {
+		t.Fatalf("ParseDone: %v", err)
+	}
+	tasks := doc.Tasks()
+	if len(tasks) != 4 {
+		t.Fatalf("got %d tasks, want 4", len(tasks))
+	}
+	want := []struct {
+		status model.Status
+		title  string
+		date   string
+	}{
+		{model.StatusDone, "File expenses", "2026-04-18"},
+		{model.StatusCancelled, "Revamp onboarding slides", "2026-04-18"},
+		{model.StatusDone, "Ship RFC", "2026-04-17"},
+		{model.StatusDone, "Review PRs", "2026-04-17"},
+	}
+	for i, w := range want {
+		if tasks[i].Status != w.status || tasks[i].Title != w.title || tasks[i].Date != w.date {
+			t.Errorf("task %d: got (%v,%q,%q), want (%v,%q,%q)",
+				i, tasks[i].Status, tasks[i].Title, tasks[i].Date,
+				w.status, w.title, w.date)
+		}
+	}
+}
