@@ -10,11 +10,16 @@ import (
 func renderView(m Model) string {
 	tasks := m.visibleTasks()
 	listStr := renderList(m, tasks)
+	var view string
 	if m.width < 100 || m.hidePreview {
-		return listStr
+		view = listStr
+	} else {
+		view = sideBySide(listStr, renderPreview(m, tasks), m.width)
 	}
-	previewStr := renderPreview(m, tasks)
-	return sideBySide(listStr, previewStr, m.width)
+	if m.prompting {
+		view += "> new task: " + m.promptBuf + "_\n"
+	}
+	return view
 }
 
 func renderList(m Model, tasks []model.Task) string {

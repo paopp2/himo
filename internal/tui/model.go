@@ -32,6 +32,9 @@ type Model struct {
 	baseDir     string
 	projects    []string
 	hidePreview bool
+	prompting   bool
+	promptBuf   string
+	promptAbove bool
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -65,6 +68,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyMsg:
+		if m.prompting {
+			return m.updatePrompt(msg), nil
+		}
 		switch msg.String() {
 		case "q", "ctrl+c":
 			m.quit = true
@@ -135,6 +141,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setStatus(model.StatusBacklog)
 		case " ":
 			m.cycleStatus()
+		case "o":
+			m.prompting = true
+			m.promptBuf = ""
+			m.promptAbove = false
+		case "O":
+			m.prompting = true
+			m.promptBuf = ""
+			m.promptAbove = true
 		}
 	}
 	return m, nil
@@ -266,4 +280,39 @@ func (m *Model) cycleStatus() {
 
 func today() string {
 	return time.Now().Format("2006-01-02")
+}
+
+// updatePrompt handles keystrokes while the new-task prompt is active.
+// Returns the updated model; Enter commits via insertNewTask, Esc cancels.
+func (m Model) updatePrompt(msg tea.KeyMsg) Model {
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.prompting = false
+		m.promptBuf = ""
+	case tea.KeyEnter:
+		if m.promptBuf != "" {
+			m.insertNewTask(m.promptBuf)
+		}
+		m.prompting = false
+		m.promptBuf = ""
+	case tea.KeyBackspace:
+		if len(m.promptBuf) > 0 {
+			m.promptBuf = m.promptBuf[:len(m.promptBuf)-1]
+		}
+	case tea.KeyRunes:
+		m.promptBuf += string(msg.Runes)
+	case tea.KeySpace:
+		m.promptBuf += " "
+	}
+	return m
+}
+
+// insertNewTask appends a pending task to active.md and persists.
+func (m *Model) insertNewTask(title string) {
+	ti := store.TaskItem{
+		Task:     model.Task{Status: model.StatusPending, Title: title},
+		RawLines: []string{"- [ ] " + title},
+	}
+	m.project.Active.Items = append(m.project.Active.Items, ti)
+	_ = store.SaveProject(m.project)
 }
