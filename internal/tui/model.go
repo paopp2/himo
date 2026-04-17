@@ -23,6 +23,24 @@ func DefaultFilter() Filter {
 	return Filter{Statuses: []model.Status{model.StatusPending, model.StatusActive, model.StatusBlocked}}
 }
 
+var digitFilters = map[string]model.Status{
+	"1": model.StatusBacklog,
+	"2": model.StatusPending,
+	"3": model.StatusActive,
+	"4": model.StatusBlocked,
+	"5": model.StatusDone,
+	"6": model.StatusCancelled,
+}
+
+var statusActionKeys = map[string]model.Status{
+	"b": model.StatusBacklog,
+	"p": model.StatusPending,
+	"a": model.StatusActive,
+	"!": model.StatusBlocked,
+	"x": model.StatusDone,
+	"-": model.StatusCancelled,
+}
+
 // Model is the top-level Bubble Tea model.
 type Model struct {
 	project     *store.Project
@@ -189,24 +207,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "0":
 			m.filter = Filter{All: true}
 			m.cursor = 0
-		case "1":
-			m.filter = Filter{Statuses: []model.Status{model.StatusBacklog}}
-			m.cursor = 0
-		case "2":
-			m.filter = Filter{Statuses: []model.Status{model.StatusPending}}
-			m.cursor = 0
-		case "3":
-			m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
-			m.cursor = 0
-		case "4":
-			m.filter = Filter{Statuses: []model.Status{model.StatusBlocked}}
-			m.cursor = 0
-		case "5":
-			m.filter = Filter{Statuses: []model.Status{model.StatusDone}}
-			m.cursor = 0
-		case "6":
-			m.filter = Filter{Statuses: []model.Status{model.StatusCancelled}}
-			m.cursor = 0
 		case "esc":
 			if m.allProjects {
 				m.exitAllProjects()
@@ -239,18 +239,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "v":
 			m.hidePreview = !m.hidePreview
-		case "x":
-			m.setStatus(model.StatusDone)
-		case "-":
-			m.setStatus(model.StatusCancelled)
-		case "!":
-			m.setStatus(model.StatusBlocked)
-		case "p":
-			m.setStatus(model.StatusPending)
-		case "a":
-			m.setStatus(model.StatusActive)
-		case "b":
-			m.setStatus(model.StatusBacklog)
 		case " ":
 			m.cycleStatus()
 		case "o":
@@ -294,6 +282,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.editingProjectDir = target.Dir
 			return m, m.openEditor(editorCmd{Path: path, Line: 0})
+		default:
+			if s, ok := digitFilters[msg.String()]; ok {
+				m.filter = Filter{Statuses: []model.Status{s}}
+				m.cursor = 0
+				return m, nil
+			}
+			if s, ok := statusActionKeys[msg.String()]; ok {
+				m.setStatus(s)
+				return m, nil
+			}
 		}
 	}
 	return m, nil
