@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -34,6 +35,30 @@ func main() {
 		}
 		if err := cli.NewProject(cfg.BaseDir, os.Args[2]); err != nil {
 			fmt.Fprintln(os.Stderr, "himo new:", err)
+			os.Exit(1)
+		}
+	case "add":
+		fs := flag.NewFlagSet("add", flag.ExitOnError)
+		project := fs.String("p", "", "project name (default: default_project)")
+		fs.Parse(os.Args[2:])
+		if fs.NArg() < 1 {
+			fmt.Fprintln(os.Stderr, "usage: himo add [-p project] \"<title>\"")
+			os.Exit(1)
+		}
+		cfg, err := loadConfigOrExit()
+		if err != nil {
+			os.Exit(1)
+		}
+		name := *project
+		if name == "" {
+			name = cfg.DefaultProject
+		}
+		if name == "" {
+			fmt.Fprintln(os.Stderr, "himo add: no project (-p) and no default_project set")
+			os.Exit(1)
+		}
+		if err := cli.AddTask(cfg.BaseDir, name, fs.Arg(0)); err != nil {
+			fmt.Fprintln(os.Stderr, "himo add:", err)
 			os.Exit(1)
 		}
 	default:
