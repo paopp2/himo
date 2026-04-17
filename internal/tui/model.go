@@ -98,13 +98,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := store.Normalize(reloaded, today()); err != nil {
 			m.banner = "normalize: " + err.Error()
 		}
-		if err := store.SaveProject(reloaded); err != nil {
-			if store.IsConflict(err) {
-				m.banner = "save conflict: " + err.Error()
-			} else {
-				m.banner = "save: " + err.Error()
-			}
-		}
+		_ = m.saveWithBanner(reloaded, "save")
 		// Bind reloaded onto m.project when it matches the current project.
 		if reloaded.Dir == m.project.Dir {
 			m.project = reloaded
@@ -421,17 +415,28 @@ func (m *Model) setStatus(s model.Status) {
 		m.banner = "normalize: " + err.Error()
 		return
 	}
-	if err := store.SaveProject(proj); err != nil {
-		if store.IsConflict(err) {
-			m.banner = "save conflict: " + err.Error()
-		} else {
-			m.banner = "save: " + err.Error()
-		}
+	if err := m.saveWithBanner(proj, "save"); err != nil {
 		return
 	}
 	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
 		m.cursor = n - 1
 	}
+}
+
+// saveWithBanner persists proj. Returns nil on success, the original error on
+// failure. Sets m.banner with a conflict-specific message when applicable.
+// Caller decides whether to roll back in-memory state.
+func (m *Model) saveWithBanner(proj *store.Project, action string) error {
+	err := store.SaveProject(proj)
+	if err == nil {
+		return nil
+	}
+	if store.IsConflict(err) {
+		m.banner = action + " blocked: file changed on disk. Restart himo to reload."
+	} else {
+		m.banner = action + ": " + err.Error()
+	}
+	return err
 }
 
 func (m *Model) cycleStatus() {
@@ -497,16 +502,11 @@ func (m *Model) deleteCurrent() {
 	}
 	removed := doc.Items[idx]
 	doc.Items = append(doc.Items[:idx], doc.Items[idx+1:]...)
-	if err := store.SaveProject(proj); err != nil {
+	if err := m.saveWithBanner(proj, "delete"); err != nil {
 		// Restore the removed item at its original index.
 		doc.Items = append(doc.Items, nil)
 		copy(doc.Items[idx+1:], doc.Items[idx:])
 		doc.Items[idx] = removed
-		if store.IsConflict(err) {
-			m.banner = "save conflict: " + err.Error()
-		} else {
-			m.banner = "save: " + err.Error()
-		}
 		return
 	}
 	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {
@@ -540,14 +540,9 @@ func (m *Model) insertNewTask(title string) {
 		insertAt = cursorIdx
 	}
 	targetDoc.Items = insertAtSlice(targetDoc.Items, insertAt, ti)
-	if err := store.SaveProject(target); err != nil {
+	if err := m.saveWithBanner(target, "new task"); err != nil {
 		// Roll back the insert.
 		targetDoc.Items = append(targetDoc.Items[:insertAt], targetDoc.Items[insertAt+1:]...)
-		if store.IsConflict(err) {
-			m.banner = "save conflict: " + err.Error()
-		} else {
-			m.banner = "save: " + err.Error()
-		}
 	}
 }
 

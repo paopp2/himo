@@ -25,7 +25,7 @@ func TestSetStatus_saveConflictSetsBanner(t *testing.T) {
 	if got == "" {
 		t.Fatalf("banner empty after save conflict")
 	}
-	if !strings.Contains(got, "conflict") {
-		t.Errorf("banner = %q, want to mention conflict", got)
+	if !strings.Contains(got, "blocked") {
+		t.Errorf("banner = %q, want to mention blocked", got)
 	}
 }
