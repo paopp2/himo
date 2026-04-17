@@ -19,6 +19,11 @@ func renderView(m Model) string {
 	if m.prompting {
 		view += "> new task: " + m.promptBuf + "_\n"
 	}
+	if m.confirmingDelete {
+		if tasks := m.visibleTasks(); m.cursor < len(tasks) {
+			view += `Delete "` + tasks[m.cursor].Title + `"? y/n` + "\n"
+		}
+	}
 	return view
 }
 

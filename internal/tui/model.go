@@ -32,9 +32,10 @@ type Model struct {
 	baseDir     string
 	projects    []string
 	hidePreview bool
-	prompting   bool
-	promptBuf   string
-	promptAbove bool
+	prompting        bool
+	promptBuf        string
+	promptAbove      bool
+	confirmingDelete bool
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -70,6 +71,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if m.prompting {
 			return m.updatePrompt(msg), nil
+		}
+		if m.confirmingDelete {
+			switch msg.String() {
+			case "y":
+				m.deleteCurrent()
+				m.confirmingDelete = false
+			case "n", "esc":
+				m.confirmingDelete = false
+			}
+			return m, nil
 		}
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -149,6 +160,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prompting = true
 			m.promptBuf = ""
 			m.promptAbove = true
+		case "d":
+			m.confirmingDelete = true
 		}
 	}
 	return m, nil
@@ -305,6 +318,19 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 		m.promptBuf += " "
 	}
 	return m
+}
+
+// deleteCurrent removes the task under the cursor, persists, and clamps cursor.
+func (m *Model) deleteCurrent() {
+	doc, idx, ok := m.currentTaskItem()
+	if !ok {
+		return
+	}
+	doc.Items = append(doc.Items[:idx], doc.Items[idx+1:]...)
+	_ = store.SaveProject(m.project)
+	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {
+		m.cursor--
+	}
 }
 
 // insertNewTask appends a pending task to active.md and persists.
