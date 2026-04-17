@@ -42,11 +42,11 @@ func buildEditorCmd(path string, line int) *exec.Cmd {
 
 // editorCmdForNotes resolves the file+line of the highlighted task.
 func (m Model) editorCmdForNotes() (editorCmd, error) {
-	doc, idx, ok := m.currentTaskItem()
+	proj, doc, idx, ok := m.currentTaskItem()
 	if !ok {
 		return editorCmd{}, fmt.Errorf("no task selected")
 	}
-	path := m.docFilename(doc)
+	path := docFilename(proj, doc)
 	if path == "" {
 		return editorCmd{}, fmt.Errorf("unknown document")
 	}
@@ -57,15 +57,15 @@ func (m Model) editorCmdForNotes() (editorCmd, error) {
 	return editorCmd{Path: path, Line: line}, nil
 }
 
-// docFilename maps a Document pointer back to its on-disk filename.
-func (m Model) docFilename(doc *store.Document) string {
+// docFilename maps a Document pointer back to its on-disk filename within proj.
+func docFilename(proj *store.Project, doc *store.Document) string {
 	switch doc {
-	case m.project.Active:
-		return filepath.Join(m.project.Dir, "active.md")
-	case m.project.Backlog:
-		return filepath.Join(m.project.Dir, "backlog.md")
-	case m.project.Done:
-		return filepath.Join(m.project.Dir, "done.md")
+	case proj.Active:
+		return filepath.Join(proj.Dir, "active.md")
+	case proj.Backlog:
+		return filepath.Join(proj.Dir, "backlog.md")
+	case proj.Done:
+		return filepath.Join(proj.Dir, "done.md")
 	}
 	return ""
 }

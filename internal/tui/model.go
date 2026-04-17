@@ -42,6 +42,11 @@ type Model struct {
 	searchBuf        string
 	searchActive     string
 	showingHelp      bool
+	pickerOpen       bool
+	pickerCursor     int
+	pickerFilter     string
+	allProjects      bool
+	allProjectsCache []*store.Project
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -83,6 +88,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.project = reloaded
 		_ = store.Normalize(m.project, today())
 		_ = store.SaveProject(m.project)
+		if m.allProjects {
+			m.reloadAllProjects()
+		}
 	case tea.KeyMsg:
 		if m.prompting {
 			return m.updatePrompt(msg), nil
@@ -96,6 +104,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmingDelete = false
 			}
 			return m, nil
+		}
+		if m.pickerOpen {
+			return m.updatePicker(msg), nil
 		}
 		if m.searching {
 			switch msg.Type {
@@ -166,12 +177,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.filter = Filter{Statuses: []model.Status{model.StatusCancelled}}
 			m.cursor = 0
 		case "esc":
-			m.filter = DefaultFilter()
-			m.cursor = 0
+			if m.allProjects {
+				m.exitAllProjects()
+			} else {
+				m.filter = DefaultFilter()
+				m.cursor = 0
+			}
 		case "tab":
+			if m.allProjects {
+				return m, nil
+			}
 			m.switchProject(+1)
 		case "shift+tab":
+			if m.allProjects {
+				return m, nil
+			}
 			m.switchProject(-1)
+		case "P":
+			m.pickerOpen = true
+			m.pickerCursor = 0
+			m.pickerFilter = ""
+		case "A":
+			if m.allProjects {
+				m.exitAllProjects()
+			} else {
+				m.enterAllProjects()
+			}
 		case "v":
 			m.hidePreview = !m.hidePreview
 		case "x":
@@ -254,39 +285,47 @@ func (m *Model) switchProject(delta int) {
 	m.cursor = 0
 }
 
-// taskLoc locates a TaskItem by its (document, index) position.
+// taskLoc locates a TaskItem by its (project, document, index) position.
 type taskLoc struct {
-	doc *store.Document
-	idx int
+	proj *store.Project
+	doc  *store.Document
+	idx  int
 }
 
 // visibleTaskLocations walks Active, Backlog, Done in order and returns one
-// taskLoc per TaskItem whose status passes the current filter.
+// taskLoc per TaskItem whose status passes the current filter. In all-projects
+// mode, the walk spans every project in allProjectsCache.
 func (m Model) visibleTaskLocations() []taskLoc {
-	docs := []*store.Document{m.project.Active, m.project.Backlog, m.project.Done}
+	projects := []*store.Project{m.project}
+	if m.allProjects {
+		projects = m.allProjectsCache
+	}
 	var out []taskLoc
-	for _, d := range docs {
-		for i, it := range d.Items {
-			ti, ok := it.(store.TaskItem)
-			if !ok {
-				continue
-			}
-			if !m.filter.All {
-				match := false
-				for _, s := range m.filter.Statuses {
-					if ti.Task.Status == s {
-						match = true
-						break
-					}
-				}
-				if !match {
+	for _, p := range projects {
+		docs := []*store.Document{p.Active, p.Backlog, p.Done}
+		for _, d := range docs {
+			for i, it := range d.Items {
+				ti, ok := it.(store.TaskItem)
+				if !ok {
 					continue
 				}
+				if !m.filter.All {
+					match := false
+					for _, s := range m.filter.Statuses {
+						if ti.Task.Status == s {
+							match = true
+							break
+						}
+					}
+					if !match {
+						continue
+					}
+				}
+				if m.searchActive != "" && !strings.Contains(strings.ToLower(ti.Task.Title), strings.ToLower(m.searchActive)) {
+					continue
+				}
+				out = append(out, taskLoc{proj: p, doc: d, idx: i})
 			}
-			if m.searchActive != "" && !strings.Contains(strings.ToLower(ti.Task.Title), strings.ToLower(m.searchActive)) {
-				continue
-			}
-			out = append(out, taskLoc{doc: d, idx: i})
 		}
 	}
 	return out
@@ -301,21 +340,21 @@ func (m Model) visibleTasks() []model.Task {
 	return out
 }
 
-// currentTaskItem returns the (document, index) of the task under the cursor,
-// or (nil, -1, false) if the cursor is out of range.
-func (m Model) currentTaskItem() (*store.Document, int, bool) {
+// currentTaskItem returns the (project, document, index) of the task under the
+// cursor, or (nil, nil, -1, false) if the cursor is out of range.
+func (m Model) currentTaskItem() (*store.Project, *store.Document, int, bool) {
 	locs := m.visibleTaskLocations()
 	if m.cursor < 0 || m.cursor >= len(locs) {
-		return nil, -1, false
+		return nil, nil, -1, false
 	}
 	loc := locs[m.cursor]
-	return loc.doc, loc.idx, true
+	return loc.proj, loc.doc, loc.idx, true
 }
 
 // setStatus changes the highlighted task's status, updates its rendered line,
 // re-normalizes, and persists. No-op if no task is selected.
 func (m *Model) setStatus(s model.Status) {
-	doc, idx, ok := m.currentTaskItem()
+	proj, doc, idx, ok := m.currentTaskItem()
 	if !ok {
 		return
 	}
@@ -323,12 +362,12 @@ func (m *Model) setStatus(s model.Status) {
 	ti.Task.Status = s
 	ti.RawLines[0] = store.RenderTaskLine(ti.Task)
 	doc.Items[idx] = ti
-	_ = store.Normalize(m.project, today())
-	_ = store.SaveProject(m.project)
+	_ = store.Normalize(proj, today())
+	_ = store.SaveProject(proj)
 }
 
 func (m *Model) cycleStatus() {
-	doc, idx, ok := m.currentTaskItem()
+	_, doc, idx, ok := m.currentTaskItem()
 	if !ok {
 		return
 	}
@@ -380,12 +419,12 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 
 // deleteCurrent removes the task under the cursor, persists, and clamps cursor.
 func (m *Model) deleteCurrent() {
-	doc, idx, ok := m.currentTaskItem()
+	proj, doc, idx, ok := m.currentTaskItem()
 	if !ok {
 		return
 	}
 	doc.Items = append(doc.Items[:idx], doc.Items[idx+1:]...)
-	_ = store.SaveProject(m.project)
+	_ = store.SaveProject(proj)
 	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {
 		m.cursor--
 	}
@@ -399,4 +438,96 @@ func (m *Model) insertNewTask(title string) {
 	}
 	m.project.Active.Items = append(m.project.Active.Items, ti)
 	_ = store.SaveProject(m.project)
+}
+
+// filteredProjects returns project names that contain pickerFilter (case-insensitive).
+func (m Model) filteredProjects() []string {
+	if m.pickerFilter == "" {
+		return m.projects
+	}
+	needle := strings.ToLower(m.pickerFilter)
+	out := make([]string, 0, len(m.projects))
+	for _, n := range m.projects {
+		if strings.Contains(strings.ToLower(n), needle) {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// updatePicker handles keystrokes while the project picker is open.
+func (m Model) updatePicker(msg tea.KeyMsg) Model {
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.pickerOpen = false
+		m.pickerFilter = ""
+		m.pickerCursor = 0
+		return m
+	case tea.KeyEnter:
+		names := m.filteredProjects()
+		if m.pickerCursor >= 0 && m.pickerCursor < len(names) {
+			p, err := store.LoadProject(filepath.Join(m.baseDir, names[m.pickerCursor]))
+			if err == nil {
+				m.project = p
+				m.cursor = 0
+			}
+		}
+		m.pickerOpen = false
+		m.pickerFilter = ""
+		m.pickerCursor = 0
+		return m
+	case tea.KeyUp:
+		if m.pickerCursor > 0 {
+			m.pickerCursor--
+		}
+	case tea.KeyDown:
+		if m.pickerCursor+1 < len(m.filteredProjects()) {
+			m.pickerCursor++
+		}
+	case tea.KeyBackspace:
+		if n := len(m.pickerFilter); n > 0 {
+			m.pickerFilter = m.pickerFilter[:n-1]
+			m.pickerCursor = 0
+		}
+	case tea.KeyRunes:
+		m.pickerFilter += string(msg.Runes)
+		m.pickerCursor = 0
+	case tea.KeySpace:
+		m.pickerFilter += " "
+		m.pickerCursor = 0
+	}
+	return m
+}
+
+// enterAllProjects loads every project listed under baseDir into the cache.
+func (m *Model) enterAllProjects() {
+	if m.baseDir == "" {
+		return
+	}
+	m.reloadAllProjects()
+	m.allProjects = true
+	m.cursor = 0
+}
+
+// exitAllProjects clears the cache and restores single-project mode.
+func (m *Model) exitAllProjects() {
+	m.allProjects = false
+	m.allProjectsCache = nil
+	m.cursor = 0
+}
+
+// reloadAllProjects refreshes the allProjectsCache from disk.
+func (m *Model) reloadAllProjects() {
+	names, err := store.ListProjects(m.baseDir)
+	if err != nil {
+		return
+	}
+	m.allProjectsCache = m.allProjectsCache[:0]
+	for _, n := range names {
+		p, err := store.LoadProject(filepath.Join(m.baseDir, n))
+		if err != nil {
+			continue
+		}
+		m.allProjectsCache = append(m.allProjectsCache, p)
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/npaolopepito/himo/internal/model"
+	"github.com/npaolopepito/himo/internal/store"
 )
 
 const helpText = `Keybindings:
@@ -47,8 +48,12 @@ func renderView(m Model) string {
 	if m.showingHelp {
 		return helpText
 	}
-	tasks := m.visibleTasks()
-	listStr := renderList(m, tasks)
+	locs := m.visibleTaskLocations()
+	tasks := make([]model.Task, len(locs))
+	for i, loc := range locs {
+		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
+	}
+	listStr := renderList(m, locs, tasks)
 	var view string
 	if m.width < 100 || m.hidePreview {
 		view = listStr
@@ -62,9 +67,12 @@ func renderView(m Model) string {
 		view += "/ search: " + m.searchBuf + "_\n"
 	}
 	if m.confirmingDelete {
-		if tasks := m.visibleTasks(); m.cursor < len(tasks) {
+		if m.cursor < len(tasks) {
 			view += `Delete "` + tasks[m.cursor].Title + `"? y/n` + "\n"
 		}
+	}
+	if m.pickerOpen {
+		view += renderPicker(m)
 	}
 	if m.banner != "" {
 		view += "! " + m.banner + "\n"
@@ -72,9 +80,13 @@ func renderView(m Model) string {
 	return view
 }
 
-func renderList(m Model, tasks []model.Task) string {
+func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	var b strings.Builder
-	header := fmt.Sprintf("himo  %s  %s  %d tasks", m.project.Name, filterLabel(m.filter), len(tasks))
+	scope := m.project.Name
+	if m.allProjects {
+		scope = "all"
+	}
+	header := fmt.Sprintf("himo  %s  %s  %d tasks", scope, filterLabel(m.filter), len(tasks))
 	if m.searchActive != "" {
 		header += "  [search: " + m.searchActive + "]"
 	}
@@ -94,7 +106,24 @@ func renderList(m Model, tasks []model.Task) string {
 		if t.HasNotes() {
 			note = " N "
 		}
-		fmt.Fprintf(&b, "%s%s %s%s\n", prefix, marker, t.Title, note)
+		title := t.Title
+		if m.allProjects && i < len(locs) {
+			title = "[" + locs[i].proj.Name + "] " + title
+		}
+		fmt.Fprintf(&b, "%s%s %s%s\n", prefix, marker, title, note)
+	}
+	return b.String()
+}
+
+func renderPicker(m Model) string {
+	var b strings.Builder
+	b.WriteString("[picker] filter: " + m.pickerFilter + "_\n")
+	for i, n := range m.filteredProjects() {
+		prefix := "  "
+		if i == m.pickerCursor {
+			prefix = "> "
+		}
+		b.WriteString(prefix + n + "\n")
 	}
 	return b.String()
 }
