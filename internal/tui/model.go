@@ -2,6 +2,7 @@ package tui
 
 import (
 	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -120,6 +121,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.switchProject(-1)
 		case "v":
 			m.hidePreview = !m.hidePreview
+		case "x":
+			m.setStatus(model.StatusDone)
+		case "-":
+			m.setStatus(model.StatusCancelled)
+		case "!":
+			m.setStatus(model.StatusBlocked)
+		case "p":
+			m.setStatus(model.StatusPending)
+		case "a":
+			m.setStatus(model.StatusActive)
+		case "b":
+			m.setStatus(model.StatusBacklog)
+		case " ":
+			m.cycleStatus()
 		}
 	}
 	return m, nil
@@ -157,19 +172,98 @@ func (m *Model) switchProject(delta int) {
 	m.cursor = 0
 }
 
-func (m Model) visibleTasks() []model.Task {
-	if m.filter.All {
-		return m.project.AllTasks()
-	}
-	all := m.project.AllTasks()
-	out := make([]model.Task, 0, len(all))
-	for _, t := range all {
-		for _, s := range m.filter.Statuses {
-			if t.Status == s {
-				out = append(out, t)
-				break
+// taskLoc locates a TaskItem by its (document, index) position.
+type taskLoc struct {
+	doc *store.Document
+	idx int
+}
+
+// visibleTaskLocations walks Active, Backlog, Done in order and returns one
+// taskLoc per TaskItem whose status passes the current filter.
+func (m Model) visibleTaskLocations() []taskLoc {
+	docs := []*store.Document{m.project.Active, m.project.Backlog, m.project.Done}
+	var out []taskLoc
+	for _, d := range docs {
+		for i, it := range d.Items {
+			ti, ok := it.(store.TaskItem)
+			if !ok {
+				continue
 			}
+			if !m.filter.All {
+				match := false
+				for _, s := range m.filter.Statuses {
+					if ti.Task.Status == s {
+						match = true
+						break
+					}
+				}
+				if !match {
+					continue
+				}
+			}
+			out = append(out, taskLoc{doc: d, idx: i})
 		}
 	}
 	return out
+}
+
+func (m Model) visibleTasks() []model.Task {
+	locs := m.visibleTaskLocations()
+	out := make([]model.Task, len(locs))
+	for i, loc := range locs {
+		out[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
+	}
+	return out
+}
+
+// currentTaskItem returns the (document, index) of the task under the cursor,
+// or (nil, -1, false) if the cursor is out of range.
+func (m Model) currentTaskItem() (*store.Document, int, bool) {
+	locs := m.visibleTaskLocations()
+	if m.cursor < 0 || m.cursor >= len(locs) {
+		return nil, -1, false
+	}
+	loc := locs[m.cursor]
+	return loc.doc, loc.idx, true
+}
+
+// setStatus changes the highlighted task's status, updates its rendered line,
+// re-normalizes, and persists. No-op if no task is selected.
+func (m *Model) setStatus(s model.Status) {
+	doc, idx, ok := m.currentTaskItem()
+	if !ok {
+		return
+	}
+	ti := doc.Items[idx].(store.TaskItem)
+	ti.Task.Status = s
+	ti.RawLines[0] = store.RenderTaskLine(ti.Task)
+	doc.Items[idx] = ti
+	_ = store.Normalize(m.project, today())
+	_ = store.SaveProject(m.project)
+}
+
+func (m *Model) cycleStatus() {
+	doc, idx, ok := m.currentTaskItem()
+	if !ok {
+		return
+	}
+	cur := doc.Items[idx].(store.TaskItem).Task.Status
+	var next model.Status
+	switch cur {
+	case model.StatusBacklog:
+		next = model.StatusPending
+	case model.StatusPending:
+		next = model.StatusActive
+	case model.StatusActive:
+		next = model.StatusDone
+	case model.StatusBlocked:
+		next = model.StatusActive
+	case model.StatusDone, model.StatusCancelled:
+		next = model.StatusPending
+	}
+	m.setStatus(next)
+}
+
+func today() string {
+	return time.Now().Format("2006-01-02")
 }
