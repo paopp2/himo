@@ -1,0 +1,4 @@
+- [/] Write design doc
+- [ ] Buy groceries
+- [!] Migrate payments table
+- [ ] Reply to Alex
