@@ -106,7 +106,7 @@ func (m Model) openEditor(ec editorCmd) tea.Cmd {
 type editorReturnedMsg struct{ err error }
 
 // fileForFilter maps the current filter to the file `e` should open.
-// Returns an error when the filter is "all" (ambiguous — user picks 1-6 first).
+// Returns an error when the filter is "all" (ambiguous; user picks 1-6 first).
 func (m Model) fileForFilter() (string, error) {
 	if m.filter.All {
 		return "", fmt.Errorf("choose a filter first (1-6) to pick a file")
