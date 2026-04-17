@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/npaolopepito/himo/internal/model"
 )
@@ -15,6 +16,8 @@ type Project struct {
 	Active  *Document
 	Backlog *Document
 	Done    *Document
+
+	mtimes map[string]time.Time // filename -> mtime at load
 }
 
 // LoadProject parses the three files in a project directory. Missing files
@@ -49,13 +52,21 @@ func LoadProject(dir string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Project{
+	p := &Project{
 		Name:    filepath.Base(dir),
 		Dir:     dir,
 		Active:  active,
 		Backlog: backlog,
 		Done:    done,
-	}, nil
+		mtimes:  make(map[string]time.Time),
+	}
+	for _, name := range []string{"active.md", "backlog.md", "done.md"} {
+		info, err := os.Stat(filepath.Join(dir, name))
+		if err == nil {
+			p.mtimes[name] = info.ModTime()
+		}
+	}
+	return p, nil
 }
 
 // AllTasks returns every task in the project across all three files.
@@ -185,22 +196,3 @@ func pruneEmptyDateHeadings(doc *Document) *Document {
 	return out
 }
 
-// SaveProject writes all three files (minimal implementation; Task 11 adds
-// atomicity and mtime conflict checking).
-func SaveProject(p *Project) error {
-	writes := []struct {
-		name string
-		doc  *Document
-	}{
-		{"active.md", p.Active},
-		{"backlog.md", p.Backlog},
-		{"done.md", p.Done},
-	}
-	for _, w := range writes {
-		path := filepath.Join(p.Dir, w.name)
-		if err := os.WriteFile(path, Render(w.doc), 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", w.name, err)
-		}
-	}
-	return nil
-}
