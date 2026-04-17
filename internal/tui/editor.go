@@ -59,15 +59,18 @@ func (m Model) editorCmdForNotes() (editorCmd, error) {
 
 // docFilename maps a Document pointer back to its on-disk filename within proj.
 func docFilename(proj *store.Project, doc *store.Document) string {
+	var f store.FileName
 	switch doc {
 	case proj.Active:
-		return filepath.Join(proj.Dir, "active.md")
+		f = store.FileActive
 	case proj.Backlog:
-		return filepath.Join(proj.Dir, "backlog.md")
+		f = store.FileBacklog
 	case proj.Done:
-		return filepath.Join(proj.Dir, "done.md")
+		f = store.FileDone
+	default:
+		return ""
 	}
-	return ""
+	return filepath.Join(proj.Dir, f.String())
 }
 
 // taskLineInFile counts lines of preceding items (including notes rawlines,
@@ -113,21 +116,13 @@ func fileForFilter(f Filter, proj *store.Project) (string, error) {
 		return "", fmt.Errorf("choose a filter first (1-6) to pick a file")
 	}
 	if len(f.Statuses) == 0 {
-		return filepath.Join(proj.Dir, "active.md"), nil
+		return "", fmt.Errorf("no filter active")
 	}
 	target := store.TargetFile(f.Statuses[0])
 	for _, s := range f.Statuses[1:] {
 		if store.TargetFile(s) != target {
-			return "", fmt.Errorf("filter spans multiple files; narrow to 1-6")
+			return "", fmt.Errorf("filter spans multiple files; narrow with 1-6")
 		}
 	}
-	switch target {
-	case store.FileActive:
-		return filepath.Join(proj.Dir, "active.md"), nil
-	case store.FileBacklog:
-		return filepath.Join(proj.Dir, "backlog.md"), nil
-	case store.FileDone:
-		return filepath.Join(proj.Dir, "done.md"), nil
-	}
-	return filepath.Join(proj.Dir, "active.md"), nil
+	return filepath.Join(proj.Dir, target.String()), nil
 }

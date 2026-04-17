@@ -525,21 +525,16 @@ func (m *Model) insertNewTask(title string) {
 	if m.allProjects && haveCursor {
 		target = cursorProj
 	}
-	var ti store.Item
+	var task model.Task
 	var targetDoc *store.Document
 	if m.isBacklogFilter() {
-		ti = store.TaskItem{
-			Task:     model.Task{Status: model.StatusBacklog, Title: title},
-			RawLines: []string{"- " + title},
-		}
+		task = model.Task{Status: model.StatusBacklog, Title: title}
 		targetDoc = target.Backlog
 	} else {
-		ti = store.TaskItem{
-			Task:     model.Task{Status: model.StatusPending, Title: title},
-			RawLines: []string{"- [ ] " + title},
-		}
+		task = model.Task{Status: model.StatusPending, Title: title}
 		targetDoc = target.Active
 	}
+	ti := store.TaskItem{Task: task, RawLines: []string{store.RenderTaskLine(task)}}
 	insertAt := len(targetDoc.Items)
 	if m.promptAbove && haveCursor && cursorProj == target && cursorDoc == targetDoc {
 		insertAt = cursorIdx
