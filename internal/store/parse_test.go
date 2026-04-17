@@ -68,3 +68,29 @@ func TestParseActive_notes(t *testing.T) {
 		t.Errorf("task 2 HasNotes = true, want false")
 	}
 }
+
+func TestParseBacklog_basic(t *testing.T) {
+	b, err := os.ReadFile("testdata/backlog_basic.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := ParseBacklog(b)
+	if err != nil {
+		t.Fatalf("ParseBacklog: %v", err)
+	}
+	tasks := doc.Tasks()
+	if len(tasks) != 3 {
+		t.Fatalf("got %d tasks, want 3", len(tasks))
+	}
+	for i, task := range tasks {
+		if task.Status != model.StatusBacklog {
+			t.Errorf("task %d status = %v, want backlog", i, task.Status)
+		}
+	}
+	wantTitles := []string{"Refactor the auth module", "Explore alternative color schemes", "Revive the plugin idea"}
+	for i, want := range wantTitles {
+		if tasks[i].Title != want {
+			t.Errorf("task %d title = %q, want %q", i, tasks[i].Title, want)
+		}
+	}
+}

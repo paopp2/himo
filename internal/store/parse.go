@@ -115,3 +115,20 @@ func parseActiveLine(line string) (Item, bool) {
 	}
 	return nil, false
 }
+
+// ParseBacklog parses the contents of backlog.md.
+func ParseBacklog(b []byte) (*Document, error) {
+	return parseDoc(b, parseBacklogLine)
+}
+
+func parseBacklogLine(line string) (Item, bool) {
+	// A backlog line looks like "- title" at column 0.
+	// Must NOT match a task line (which starts with "- [").
+	if strings.HasPrefix(line, "- [") {
+		return nil, false
+	}
+	if m := backlogLineRe.FindStringSubmatch(line); m != nil {
+		return TaskItem{Task: model.Task{Status: model.StatusBacklog, Title: m[1]}}, true
+	}
+	return nil, false
+}
