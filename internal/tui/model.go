@@ -2,6 +2,7 @@ package tui
 
 import (
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,6 +38,9 @@ type Model struct {
 	promptAbove      bool
 	confirmingDelete bool
 	banner           string
+	searching        bool
+	searchBuf        string
+	searchActive     string
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -89,6 +93,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmingDelete = false
 			case "n", "esc":
 				m.confirmingDelete = false
+			}
+			return m, nil
+		}
+		if m.searching {
+			switch msg.Type {
+			case tea.KeyEsc:
+				m.searching = false
+				m.searchBuf = ""
+			case tea.KeyEnter:
+				m.searchActive = m.searchBuf
+				m.searching = false
+				m.searchBuf = ""
+				m.cursor = 0
+			case tea.KeyBackspace:
+				if len(m.searchBuf) > 0 {
+					m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
+				}
+			case tea.KeyRunes:
+				m.searchBuf += string(msg.Runes)
+			case tea.KeySpace:
+				m.searchBuf += " "
 			}
 			return m, nil
 		}
@@ -170,6 +195,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prompting = true
 			m.promptBuf = ""
 			m.promptAbove = true
+		case "/":
+			m.searching = true
+			m.searchBuf = ""
 		case "d":
 			m.confirmingDelete = true
 		case "enter":
@@ -251,6 +279,9 @@ func (m Model) visibleTaskLocations() []taskLoc {
 				if !match {
 					continue
 				}
+			}
+			if m.searchActive != "" && !strings.Contains(strings.ToLower(ti.Task.Title), strings.ToLower(m.searchActive)) {
+				continue
 			}
 			out = append(out, taskLoc{doc: d, idx: i})
 		}

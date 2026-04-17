@@ -19,6 +19,9 @@ func renderView(m Model) string {
 	if m.prompting {
 		view += "> new task: " + m.promptBuf + "_\n"
 	}
+	if m.searching {
+		view += "/ search: " + m.searchBuf + "_\n"
+	}
 	if m.confirmingDelete {
 		if tasks := m.visibleTasks(); m.cursor < len(tasks) {
 			view += `Delete "` + tasks[m.cursor].Title + `"? y/n` + "\n"
@@ -32,7 +35,11 @@ func renderView(m Model) string {
 
 func renderList(m Model, tasks []model.Task) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "himo  %s  %s  %d tasks\n", m.project.Name, filterLabel(m.filter), len(tasks))
+	header := fmt.Sprintf("himo  %s  %s  %d tasks", m.project.Name, filterLabel(m.filter), len(tasks))
+	if m.searchActive != "" {
+		header += "  [search: " + m.searchActive + "]"
+	}
+	fmt.Fprintf(&b, "%s\n", header)
 	b.WriteString(strings.Repeat("-", 60))
 	b.WriteByte('\n')
 	for i, t := range tasks {
