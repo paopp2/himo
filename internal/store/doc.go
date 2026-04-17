@@ -36,12 +36,13 @@ type OpaqueLines struct {
 
 func (OpaqueLines) isItem() {}
 
-// Tasks returns the TaskItem tasks in order.
-func (d *Document) Tasks() []*model.Task {
-	out := make([]*model.Task, 0, len(d.Items))
-	for i := range d.Items {
-		if ti, ok := d.Items[i].(TaskItem); ok {
-			out = append(out, &ti.Task)
+// Tasks returns a read-only snapshot of the task items in document order.
+// Mutations to the returned slice do not affect the Document.
+func (d *Document) Tasks() []model.Task {
+	out := make([]model.Task, 0, len(d.Items))
+	for _, it := range d.Items {
+		if ti, ok := it.(TaskItem); ok {
+			out = append(out, ti.Task)
 		}
 	}
 	return out

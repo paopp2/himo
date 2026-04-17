@@ -70,8 +70,8 @@ func LoadProject(dir string) (*Project, error) {
 }
 
 // AllTasks returns every task in the project across all three files.
-func (p *Project) AllTasks() []*model.Task {
-	var out []*model.Task
+func (p *Project) AllTasks() []model.Task {
+	var out []model.Task
 	out = append(out, p.Active.Tasks()...)
 	out = append(out, p.Backlog.Tasks()...)
 	out = append(out, p.Done.Tasks()...)
@@ -175,7 +175,7 @@ func insertDone(doc *Document, incoming []TaskItem, today string) *Document {
 func pruneEmptyDateHeadings(doc *Document) *Document {
 	out := &Document{Items: make([]Item, 0, len(doc.Items))}
 	for i := 0; i < len(doc.Items); i++ {
-		if h, ok := doc.Items[i].(DateHeading); ok {
+		if _, ok := doc.Items[i].(DateHeading); ok {
 			hasTasks := false
 			for j := i + 1; j < len(doc.Items); j++ {
 				if _, isH := doc.Items[j].(DateHeading); isH {
@@ -189,7 +189,6 @@ func pruneEmptyDateHeadings(doc *Document) *Document {
 			if !hasTasks {
 				continue
 			}
-			_ = h
 		}
 		out.Items = append(out.Items, doc.Items[i])
 	}
