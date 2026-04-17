@@ -196,3 +196,22 @@ func pruneEmptyDateHeadings(doc *Document) *Document {
 	return out
 }
 
+// ListProjects returns the names of every immediate subdirectory under base
+// that contains an active.md file.
+func ListProjects(baseDir string) ([]string, error) {
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("read base dir: %w", err)
+	}
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(baseDir, e.Name(), "active.md")); err == nil {
+			names = append(names, e.Name())
+		}
+	}
+	return names, nil
+}
+
