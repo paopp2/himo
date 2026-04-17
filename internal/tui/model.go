@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -46,7 +47,8 @@ type Model struct {
 	pickerCursor     int
 	pickerFilter     string
 	allProjects      bool
-	allProjectsCache []*store.Project
+	allProjectsCache  []*store.Project
+	editingProjectDir string
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -80,18 +82,53 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case editorReturnedMsg:
-		reloaded, err := store.LoadProject(m.project.Dir)
+		if msg.err != nil {
+			m.banner = "editor: " + msg.err.Error()
+		}
+		dir := m.editingProjectDir
+		if dir == "" {
+			dir = m.project.Dir
+		}
+		reloaded, err := store.LoadProject(dir)
 		if err != nil {
 			m.banner = "reload: " + err.Error()
+			m.editingProjectDir = ""
 			return m, nil
 		}
-		m.project = reloaded
-		_ = store.Normalize(m.project, today())
-		_ = store.SaveProject(m.project)
+		if err := store.Normalize(reloaded, today()); err != nil {
+			m.banner = "normalize: " + err.Error()
+		}
+		if err := store.SaveProject(reloaded); err != nil {
+			if store.IsConflict(err) {
+				m.banner = "save conflict: " + err.Error()
+			} else {
+				m.banner = "save: " + err.Error()
+			}
+		}
+		// Bind reloaded onto m.project when it matches the current project.
+		if reloaded.Dir == m.project.Dir {
+			m.project = reloaded
+		}
 		if m.allProjects {
 			m.reloadAllProjects()
+			// After cache refresh, rebind m.project by Dir match.
+			want := m.project.Dir
+			for _, p := range m.allProjectsCache {
+				if p.Dir == want {
+					m.project = p
+					break
+				}
+			}
 		}
+		m.editingProjectDir = ""
 	case tea.KeyMsg:
+		if m.showingHelp {
+			switch msg.String() {
+			case "?", "esc", "q":
+				m.showingHelp = false
+			}
+			return m, nil
+		}
 		if m.prompting {
 			return m.updatePrompt(msg), nil
 		}
@@ -179,6 +216,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if m.allProjects {
 				m.exitAllProjects()
+			} else if m.searchActive != "" {
+				m.searchActive = ""
+				m.cursor = 0
 			} else {
 				m.filter = DefaultFilter()
 				m.cursor = 0
@@ -240,13 +280,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.banner = err.Error()
 				return m, nil
 			}
+			if proj, _, _, ok := m.currentTaskItem(); ok && proj != nil {
+				m.editingProjectDir = proj.Dir
+			} else {
+				m.editingProjectDir = m.project.Dir
+			}
 			return m, m.openEditor(ec)
 		case "e":
-			path, err := m.fileForFilter()
+			target := m.project
+			if m.allProjects {
+				if p, _, _, ok := m.currentTaskItem(); ok {
+					target = p
+				}
+			}
+			path, err := fileForFilter(m.filter, target)
 			if err != nil {
 				m.banner = err.Error()
 				return m, nil
 			}
+			m.editingProjectDir = target.Dir
 			return m, m.openEditor(editorCmd{Path: path, Line: 0})
 		}
 	}
@@ -279,6 +331,7 @@ func (m *Model) switchProject(delta int) {
 	next := (idx + delta + len(m.projects)) % len(m.projects)
 	p, err := store.LoadProject(filepath.Join(m.baseDir, m.projects[next]))
 	if err != nil {
+		m.banner = "switch: " + err.Error()
 		return
 	}
 	m.project = p
@@ -358,12 +411,27 @@ func (m *Model) setStatus(s model.Status) {
 	if !ok {
 		return
 	}
-	ti := doc.Items[idx].(store.TaskItem)
+	old := doc.Items[idx].(store.TaskItem)
+	ti := old
 	ti.Task.Status = s
 	ti.RawLines[0] = store.RenderTaskLine(ti.Task)
 	doc.Items[idx] = ti
-	_ = store.Normalize(proj, today())
-	_ = store.SaveProject(proj)
+	if err := store.Normalize(proj, today()); err != nil {
+		doc.Items[idx] = old
+		m.banner = "normalize: " + err.Error()
+		return
+	}
+	if err := store.SaveProject(proj); err != nil {
+		if store.IsConflict(err) {
+			m.banner = "save conflict: " + err.Error()
+		} else {
+			m.banner = "save: " + err.Error()
+		}
+		return
+	}
+	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
+		m.cursor = n - 1
+	}
 }
 
 func (m *Model) cycleStatus() {
@@ -384,6 +452,8 @@ func (m *Model) cycleStatus() {
 		next = model.StatusActive
 	case model.StatusDone, model.StatusCancelled:
 		next = model.StatusPending
+	default:
+		return
 	}
 	m.setStatus(next)
 }
@@ -399,12 +469,14 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 	case tea.KeyEsc:
 		m.prompting = false
 		m.promptBuf = ""
+		m.promptAbove = false
 	case tea.KeyEnter:
 		if m.promptBuf != "" {
 			m.insertNewTask(m.promptBuf)
 		}
 		m.prompting = false
 		m.promptBuf = ""
+		m.promptAbove = false
 	case tea.KeyBackspace:
 		if len(m.promptBuf) > 0 {
 			m.promptBuf = m.promptBuf[:len(m.promptBuf)-1]
@@ -423,31 +495,73 @@ func (m *Model) deleteCurrent() {
 	if !ok {
 		return
 	}
+	removed := doc.Items[idx]
 	doc.Items = append(doc.Items[:idx], doc.Items[idx+1:]...)
-	_ = store.SaveProject(proj)
+	if err := store.SaveProject(proj); err != nil {
+		// Restore the removed item at its original index.
+		doc.Items = append(doc.Items, nil)
+		copy(doc.Items[idx+1:], doc.Items[idx:])
+		doc.Items[idx] = removed
+		if store.IsConflict(err) {
+			m.banner = "save conflict: " + err.Error()
+		} else {
+			m.banner = "save: " + err.Error()
+		}
+		return
+	}
 	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {
 		m.cursor--
 	}
 }
 
-// insertNewTask appends a new task to the document matching the current filter
-// (backlog.md when the filter is exclusively backlog, active.md otherwise) and
-// persists.
+// insertNewTask inserts a new task into the document matching the current
+// filter (backlog.md when the filter is exclusively backlog, active.md
+// otherwise) and persists. In all-projects mode the owner is the cursor task's
+// project. When promptAbove is set the task lands at the cursor's position in
+// the target document (append otherwise).
 func (m *Model) insertNewTask(title string) {
+	target := m.project
+	cursorProj, cursorDoc, cursorIdx, haveCursor := m.currentTaskItem()
+	if m.allProjects && haveCursor {
+		target = cursorProj
+	}
+	var ti store.Item
+	var targetDoc *store.Document
 	if m.isBacklogFilter() {
-		ti := store.TaskItem{
+		ti = store.TaskItem{
 			Task:     model.Task{Status: model.StatusBacklog, Title: title},
 			RawLines: []string{"- " + title},
 		}
-		m.project.Backlog.Items = append(m.project.Backlog.Items, ti)
+		targetDoc = target.Backlog
 	} else {
-		ti := store.TaskItem{
+		ti = store.TaskItem{
 			Task:     model.Task{Status: model.StatusPending, Title: title},
 			RawLines: []string{"- [ ] " + title},
 		}
-		m.project.Active.Items = append(m.project.Active.Items, ti)
+		targetDoc = target.Active
 	}
-	_ = store.SaveProject(m.project)
+	insertAt := len(targetDoc.Items)
+	if m.promptAbove && haveCursor && cursorProj == target && cursorDoc == targetDoc {
+		insertAt = cursorIdx
+	}
+	targetDoc.Items = insertAtSlice(targetDoc.Items, insertAt, ti)
+	if err := store.SaveProject(target); err != nil {
+		// Roll back the insert.
+		targetDoc.Items = append(targetDoc.Items[:insertAt], targetDoc.Items[insertAt+1:]...)
+		if store.IsConflict(err) {
+			m.banner = "save conflict: " + err.Error()
+		} else {
+			m.banner = "save: " + err.Error()
+		}
+	}
+}
+
+// insertAtSlice returns s with it inserted at idx.
+func insertAtSlice(s []store.Item, idx int, it store.Item) []store.Item {
+	s = append(s, nil)
+	copy(s[idx+1:], s[idx:])
+	s[idx] = it
+	return s
 }
 
 // isBacklogFilter reports whether the current filter is exclusively backlog.
@@ -484,7 +598,9 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 		names := m.filteredProjects()
 		if m.pickerCursor >= 0 && m.pickerCursor < len(names) {
 			p, err := store.LoadProject(filepath.Join(m.baseDir, names[m.pickerCursor]))
-			if err == nil {
+			if err != nil {
+				m.banner = "load: " + err.Error()
+			} else {
 				m.project = p
 				m.cursor = 0
 			}
@@ -533,18 +649,27 @@ func (m *Model) exitAllProjects() {
 	m.cursor = 0
 }
 
-// reloadAllProjects refreshes the allProjectsCache from disk.
+// reloadAllProjects refreshes the allProjectsCache from disk. On ListProjects
+// failure the cache is left untouched; per-project load failures are
+// accumulated into the banner.
 func (m *Model) reloadAllProjects() {
 	names, err := store.ListProjects(m.baseDir)
 	if err != nil {
+		m.banner = "list: " + err.Error()
 		return
 	}
-	m.allProjectsCache = m.allProjectsCache[:0]
+	next := make([]*store.Project, 0, len(names))
+	var failed []string
 	for _, n := range names {
 		p, err := store.LoadProject(filepath.Join(m.baseDir, n))
 		if err != nil {
+			failed = append(failed, n)
 			continue
 		}
-		m.allProjectsCache = append(m.allProjectsCache, p)
+		next = append(next, p)
+	}
+	m.allProjectsCache = next
+	if len(failed) > 0 {
+		m.banner = fmt.Sprintf("skipped %d project(s): %s", len(failed), strings.Join(failed, ", "))
 	}
 }

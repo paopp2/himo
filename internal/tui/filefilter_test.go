@@ -23,11 +23,11 @@ func TestFileForFilter(t *testing.T) {
 		{"done", Filter{Statuses: []model.Status{model.StatusDone}}, false, "done.md"},
 		{"cancelled", Filter{Statuses: []model.Status{model.StatusCancelled}}, false, "done.md"},
 		{"all", Filter{All: true}, true, ""},
+		{"ambiguous", Filter{Statuses: []model.Status{model.StatusActive, model.StatusDone}}, true, ""},
 	}
 	for _, tc := range cases {
-		m := NewModel(testProject(t))
-		m.filter = tc.filter
-		got, err := m.fileForFilter()
+		proj := testProject(t)
+		got, err := fileForFilter(tc.filter, proj)
 		if tc.wantErr {
 			if err == nil {
 				t.Errorf("%s: want error, got %q", tc.name, got)
