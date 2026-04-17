@@ -24,6 +24,9 @@ func renderView(m Model) string {
 			view += `Delete "` + tasks[m.cursor].Title + `"? y/n` + "\n"
 		}
 	}
+	if m.banner != "" {
+		view += "! " + m.banner + "\n"
+	}
 	return view
 }
 

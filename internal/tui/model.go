@@ -36,6 +36,7 @@ type Model struct {
 	promptBuf        string
 	promptAbove      bool
 	confirmingDelete bool
+	banner           string
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -68,6 +69,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+	case editorReturnedMsg:
+		reloaded, err := store.LoadProject(m.project.Dir)
+		if err != nil {
+			m.banner = "reload: " + err.Error()
+			return m, nil
+		}
+		m.project = reloaded
+		_ = store.Normalize(m.project, today())
+		_ = store.SaveProject(m.project)
 	case tea.KeyMsg:
 		if m.prompting {
 			return m.updatePrompt(msg), nil
@@ -162,6 +172,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.promptAbove = true
 		case "d":
 			m.confirmingDelete = true
+		case "enter":
+			ec, err := m.editorCmdForNotes()
+			if err != nil {
+				m.banner = err.Error()
+				return m, nil
+			}
+			return m, m.openEditor(ec)
 		}
 	}
 	return m, nil
