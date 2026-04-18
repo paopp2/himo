@@ -73,7 +73,17 @@ func renderView(m Model) string {
 	if width < 100 || m.hidePreview {
 		body = listStr
 	} else {
-		body = sideBySide(listStr, renderPreview(m, tasks), width)
+		var previewTask *model.Task
+		if len(tasks) > 0 && m.cursor < len(tasks) {
+			previewTask = &tasks[m.cursor]
+		}
+		preview := renderPreview(previewInput{
+			Styles: m.styles,
+			Width:  width - (width * 60 / 100) - 3,
+			Height: m.height - 4,
+			Task:   previewTask,
+		})
+		body = sideBySide(listStr, preview, width)
 	}
 
 	view := top + "\n" + fbar + "\n\n" + body
@@ -175,19 +185,66 @@ func renderPicker(m Model) string {
 	return b.String()
 }
 
-func renderPreview(m Model, tasks []model.Task) string {
-	if len(tasks) == 0 || m.cursor >= len(tasks) {
-		return "Notes:\n(no task selected)"
+type previewInput struct {
+	Styles  *Styles
+	Width   int
+	Height  int
+	Task    *model.Task
+	Focused bool
+}
+
+func renderPreview(in previewInput) string {
+	border := in.Styles.PaneBorder
+	if in.Focused {
+		border = in.Styles.PaneBorderFocused
 	}
-	t := tasks[m.cursor]
-	if !t.HasNotes() {
-		return "Notes: " + t.Title + "\n\n(no notes - press Enter to add)"
+	width := in.Width
+	if width < 20 {
+		width = 20
 	}
-	lines := strings.Split(t.Notes, "\n")
+	height := in.Height
+	if height < 5 {
+		height = 5
+	}
+
+	var header, body string
+	switch {
+	case in.Task == nil:
+		header = "Notes"
+		body = in.Styles.Muted.Render(
+			"No tasks match the current filter.\n" +
+				"Press Esc to reset filter, o to add one.")
+	case !in.Task.HasNotes():
+		glyph := in.Styles.GlyphStyle(in.Task.Status).Render(in.Styles.StatusGlyph(in.Task.Status))
+		header = "Notes  " + glyph + " " + in.Task.Title
+		body = in.Styles.Muted.Render(
+			"No notes yet.\nPress Enter to open this task in your editor.")
+	default:
+		glyph := in.Styles.GlyphStyle(in.Task.Status).Render(in.Styles.StatusGlyph(in.Task.Status))
+		header = "Notes  " + glyph + " " + in.Task.Title
+		raw := stripNotesIndent(in.Task.Notes)
+		r, err := newNotesRenderer(width - 4)
+		if err == nil {
+			rendered, rerr := r.Render(raw)
+			if rerr == nil {
+				body = strings.TrimRight(rendered, "\n")
+			}
+		}
+		if body == "" {
+			body = raw
+		}
+	}
+
+	content := header + "\n\n" + body
+	return border.Width(width).Height(height).Render(content)
+}
+
+func stripNotesIndent(notes string) string {
+	lines := strings.Split(notes, "\n")
 	for i, ln := range lines {
 		lines[i] = strings.TrimPrefix(ln, "    ")
 	}
-	return "Notes: " + t.Title + "\n\n" + strings.Join(lines, "\n")
+	return strings.Join(lines, "\n")
 }
 
 func sideBySide(left, right string, width int) string {
