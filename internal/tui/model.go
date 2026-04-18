@@ -102,6 +102,23 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 
 func (m Model) Init() tea.Cmd { return nil }
 
+// currentMode reports the interaction mode implied by m's overlay flags.
+func (m Model) currentMode() Mode {
+	switch {
+	case m.showingHelp:
+		return ModeHelp
+	case m.searching:
+		return ModeSearch
+	case m.prompting:
+		return ModePrompt
+	case m.confirmingDelete:
+		return ModeDelete
+	case m.pickerOpen:
+		return ModePicker
+	}
+	return ModeNormal
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:

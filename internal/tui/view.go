@@ -87,26 +87,29 @@ func renderView(m Model) string {
 		body = lipgloss.JoinHorizontal(lipgloss.Top, listPane, "  ", previewPane)
 	}
 
-	view := top + "\n" + fbar + "\n\n" + body
+	hint := renderHintBar(m.styles, hintInput{
+		Mode:        m.currentMode(),
+		Width:       width,
+		SearchBuf:   m.searchBuf,
+		PromptBuf:   m.promptBuf,
+		PromptAbove: m.promptAbove,
+		DeleteTitle: deleteTitle(m, tasks),
+		Banner:      m.banner,
+	})
+	view := top + "\n" + fbar + "\n\n" + body + "\n" + hint
 
-	if m.prompting {
-		view += "> new task: " + m.promptBuf + "_\n"
-	}
-	if m.searching {
-		view += "/ search: " + m.searchBuf + "_\n"
-	}
-	if m.confirmingDelete {
-		if m.cursor < len(tasks) {
-			view += `Delete "` + tasks[m.cursor].Title + `"? y/n` + "\n"
-		}
-	}
+	// Picker stays inline until Task 6.2 folds it into a modal.
 	if m.pickerOpen {
-		view += renderPicker(m)
-	}
-	if m.banner != "" {
-		view += "! " + m.banner + "\n"
+		view += "\n" + renderPicker(m)
 	}
 	return view
+}
+
+func deleteTitle(m Model, tasks []model.Task) string {
+	if !m.confirmingDelete || m.cursor >= len(tasks) {
+		return ""
+	}
+	return tasks[m.cursor].Title
 }
 
 func renderList(m Model, locs []taskLoc, tasks []model.Task) string {

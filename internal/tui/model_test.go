@@ -61,3 +61,34 @@ func TestNewModel_asciiGlyphsOption(t *testing.T) {
 		t.Errorf("ascii glyph for active = %q, want *", got)
 	}
 }
+
+func TestCurrentMode(t *testing.T) {
+	m := NewModel(testProject(t))
+	if m.currentMode() != ModeNormal {
+		t.Errorf("default mode = %v, want NORMAL", m.currentMode())
+	}
+	m.searching = true
+	if m.currentMode() != ModeSearch {
+		t.Errorf("searching=true mode = %v, want SEARCH", m.currentMode())
+	}
+	m.searching = false
+	m.prompting = true
+	if m.currentMode() != ModePrompt {
+		t.Errorf("prompting=true mode = %v, want PROMPT", m.currentMode())
+	}
+	m.prompting = false
+	m.confirmingDelete = true
+	if m.currentMode() != ModeDelete {
+		t.Errorf("confirmingDelete=true mode = %v, want DELETE", m.currentMode())
+	}
+	m.confirmingDelete = false
+	m.pickerOpen = true
+	if m.currentMode() != ModePicker {
+		t.Errorf("pickerOpen=true mode = %v, want PICKER", m.currentMode())
+	}
+	m.pickerOpen = false
+	m.showingHelp = true
+	if m.currentMode() != ModeHelp {
+		t.Errorf("showingHelp=true mode = %v, want HELP", m.currentMode())
+	}
+}
