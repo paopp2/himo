@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/npaolopepito/himo/internal/config"
+	"github.com/paopp2/himo/internal/config"
 )
 
 // Init runs the first-run interactive setup: prompt for base_dir, create it,

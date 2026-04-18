@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/npaolopepito/himo/internal/model"
+	"github.com/paopp2/himo/internal/model"
 )
 
 func TestHelp_isModal(t *testing.T) {

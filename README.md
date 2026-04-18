@@ -15,7 +15,7 @@ Most todo tools ask you to adopt their database, their query language, or their 
 ## Install
 
 ```sh
-go install github.com/npaolopepito/himo/cmd/himo@latest
+go install github.com/paopp2/himo/cmd/himo@latest
 ```
 
 ## Quick start

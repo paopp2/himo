@@ -3,7 +3,7 @@ package store
 import (
 	"bytes"
 
-	"github.com/npaolopepito/himo/internal/model"
+	"github.com/paopp2/himo/internal/model"
 )
 
 // RenderTaskLine returns the column-0 line for a task as it should appear in

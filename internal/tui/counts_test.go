@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/npaolopepito/himo/internal/model"
+	"github.com/paopp2/himo/internal/model"
 )
 
 func TestStatusCounts(t *testing.T) {

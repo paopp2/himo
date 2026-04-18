@@ -1,4 +1,4 @@
-module github.com/npaolopepito/himo
+module github.com/paopp2/himo
 
 go 1.24.2
 

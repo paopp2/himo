@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // TestEditorReturn_reloadsEditedProject verifies the editor-return handler

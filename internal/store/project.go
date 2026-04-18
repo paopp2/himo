@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/npaolopepito/himo/internal/model"
+	"github.com/paopp2/himo/internal/model"
 )
 
 // allFiles lists the three filenames that make up a project, in a fixed order.

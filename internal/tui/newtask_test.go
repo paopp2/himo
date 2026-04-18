@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/store"
 )
 
 func TestNewTask_OInsertsAbove(t *testing.T) {

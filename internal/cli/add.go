@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/npaolopepito/himo/internal/model"
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/model"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // AddTask appends a pending task to the project's active.md.

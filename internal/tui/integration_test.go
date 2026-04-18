@@ -10,7 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/store"
 )
 
 func newIntegrationTestModel(t *testing.T) (*teatest.TestModel, *store.Project) {

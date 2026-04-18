@@ -5,8 +5,8 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/npaolopepito/himo/internal/model"
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/model"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // Ls prints tasks in a project (or all projects if project == "") filtered

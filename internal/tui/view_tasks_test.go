@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
-	"github.com/npaolopepito/himo/internal/model"
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/model"
+	"github.com/paopp2/himo/internal/store"
 )
 
 func testStyles(t *testing.T) *Styles {

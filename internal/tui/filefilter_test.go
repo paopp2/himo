@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/npaolopepito/himo/internal/model"
+	"github.com/paopp2/himo/internal/model"
 )
 
 func TestFileForFilter(t *testing.T) {

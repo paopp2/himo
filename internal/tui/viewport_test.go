@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/npaolopepito/himo/internal/model"
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/model"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // bigTestProject writes n pending tasks into a temp project and returns a

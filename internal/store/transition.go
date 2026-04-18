@@ -1,6 +1,6 @@
 package store
 
-import "github.com/npaolopepito/himo/internal/model"
+import "github.com/paopp2/himo/internal/model"
 
 // FileName identifies which of the three per-project files a task belongs in.
 type FileName int

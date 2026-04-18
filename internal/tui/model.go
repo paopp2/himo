@@ -8,8 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/npaolopepito/himo/internal/model"
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/model"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // Filter narrows the visible tasks by status.

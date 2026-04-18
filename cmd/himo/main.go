@@ -8,11 +8,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/npaolopepito/himo/internal/cli"
-	"github.com/npaolopepito/himo/internal/config"
-	"github.com/npaolopepito/himo/internal/state"
-	"github.com/npaolopepito/himo/internal/store"
-	"github.com/npaolopepito/himo/internal/tui"
+	"github.com/paopp2/himo/internal/cli"
+	"github.com/paopp2/himo/internal/config"
+	"github.com/paopp2/himo/internal/state"
+	"github.com/paopp2/himo/internal/store"
+	"github.com/paopp2/himo/internal/tui"
 )
 
 const version = "0.0.1-dev"

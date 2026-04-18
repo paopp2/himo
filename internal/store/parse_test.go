@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/npaolopepito/himo/internal/model"
+	"github.com/paopp2/himo/internal/model"
 )
 
 func TestParseActive_basic(t *testing.T) {

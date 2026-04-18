@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/store"
 )
 
 func TestPreview_showsNotesForHighlightedTask(t *testing.T) {

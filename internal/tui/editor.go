@@ -9,7 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/npaolopepito/himo/internal/store"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // editorCmd is a (file, line) pair ready to hand to the user's $EDITOR.

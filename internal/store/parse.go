@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/npaolopepito/himo/internal/model"
+	"github.com/paopp2/himo/internal/model"
 )
 
 var (

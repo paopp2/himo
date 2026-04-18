@@ -1,6 +1,6 @@
 package store
 
-import "github.com/npaolopepito/himo/internal/model"
+import "github.com/paopp2/himo/internal/model"
 
 // Document is the parsed form of a single markdown file. It holds items in
 // the exact order they appear, so writing back produces a byte-compatible
