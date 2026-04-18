@@ -59,6 +59,30 @@ func TestUndo_statusChange(t *testing.T) {
 	}
 }
 
+// A status change followed by undo must restore the on-disk line exactly,
+// not just Task.Status. Render the active document and compare to the
+// pre-mutation bytes — catches any RawLines aliasing between snapshot and
+// live items.
+func TestUndo_statusChange_preservesRawLines(t *testing.T) {
+	m := NewModel(testProject(t))
+	// Save once up front so the "before" rendering includes any chrome
+	// (leading project heading) that SaveProject injects. Without this
+	// stabilization, the first mutation would introduce the heading and
+	// the byte comparison would fail for reasons unrelated to aliasing.
+	if err := store.SaveProject(m.project); err != nil {
+		t.Fatal(err)
+	}
+	before := string(store.Render(m.project.Active))
+
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+
+	after := string(store.Render(cur.(Model).project.Active))
+	if after != before {
+		t.Errorf("after undo: active document changed on disk:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
 // Press d then y to delete the current task, then u. The deleted task must
 // return at its original index.
 func TestUndo_delete(t *testing.T) {

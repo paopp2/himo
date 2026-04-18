@@ -18,17 +18,33 @@ type historyEntry struct {
 	cursor     int
 }
 
-// snapshotOf captures the current state of proj plus the given cursor index.
-// Slices are shallow-copied; store.Item values and their string contents are
-// value-typed or immutable, so a shallow copy is safe.
+// snapshotOf captures proj's three document item slices plus the cursor.
+// Slices are copied and TaskItem.RawLines is cloned so later in-place edits
+// (e.g. setStatus rewriting RawLines[0]) do not corrupt the snapshot.
 func snapshotOf(proj *store.Project, cursor int) historyEntry {
 	return historyEntry{
 		projectDir: proj.Dir,
-		active:     append([]store.Item(nil), proj.Active.Items...),
-		backlog:    append([]store.Item(nil), proj.Backlog.Items...),
-		done:       append([]store.Item(nil), proj.Done.Items...),
+		active:     cloneItems(proj.Active.Items),
+		backlog:    cloneItems(proj.Backlog.Items),
+		done:       cloneItems(proj.Done.Items),
 		cursor:     cursor,
 	}
+}
+
+// cloneItems returns a copy of items safe for long-term retention. TaskItem
+// values carry a RawLines []string that setStatus mutates in place; shallow
+// slice copying would alias that backing array and corrupt the snapshot.
+func cloneItems(items []store.Item) []store.Item {
+	out := make([]store.Item, len(items))
+	for i, it := range items {
+		if ti, ok := it.(store.TaskItem); ok {
+			ti.RawLines = append([]string(nil), ti.RawLines...)
+			out[i] = ti
+		} else {
+			out[i] = it
+		}
+	}
+	return out
 }
 
 // pushUndo records a snapshot of proj before a mutation. The redo stack is
