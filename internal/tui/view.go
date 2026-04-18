@@ -186,7 +186,9 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	return b.String()
 }
 
-// renderListPane wraps renderList in a rounded-border box sized to (width, height).
+// renderListPane wraps the visible slice of task rows in a rounded-border
+// box. When the list is taller than the pane, rows scroll so the cursor
+// row is always visible.
 func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height int, focused bool) string {
 	border := m.styles.PaneBorder
 	if focused {
@@ -195,7 +197,41 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	if height < 5 {
 		height = 5
 	}
-	return border.Width(width).Height(height).Render(renderList(m, locs, tasks))
+
+	// Inner content height is pane height minus border top+bottom.
+	contentH := height - 2
+	if contentH < 1 {
+		contentH = 1
+	}
+
+	rows := make([]string, len(tasks))
+	for i, t := range tasks {
+		opts := renderTaskOpts{Width: width - 2, Cursor: i == m.cursor}
+		if m.allProjects && i < len(locs) {
+			opts.AllProjects = true
+			opts.ProjectName = locs[i].proj.Name
+		}
+		rows[i] = renderTaskLine(m.styles, t, opts)
+	}
+
+	// Compute the window so m.cursor is visible.
+	start := 0
+	if len(rows) > contentH {
+		start = m.cursor - contentH/2
+		if start < 0 {
+			start = 0
+		}
+		if start > len(rows)-contentH {
+			start = len(rows) - contentH
+		}
+	}
+	end := start + contentH
+	if end > len(rows) {
+		end = len(rows)
+	}
+
+	visible := strings.Join(rows[start:end], "\n")
+	return border.Width(width).Height(height).Render(visible)
 }
 
 type renderTaskOpts struct {
