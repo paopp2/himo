@@ -199,3 +199,93 @@ func TestUndo_stackCap(t *testing.T) {
 		t.Errorf("undoStack len = %d after 60 mutations, want %d", got, historyLimit)
 	}
 }
+
+// In all-projects mode, mutate a task in one project, move to another, mutate
+// that too, then u twice. Both mutations must be reverted in their respective
+// projects.
+func TestUndo_allProjectsCrossProject(t *testing.T) {
+	base := twoProjectBase(t)
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+
+	// Mutate the task the cursor is on (some project).
+	firstProj, _, _, _ := cur.(Model).currentTaskItem()
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+
+	// Move until cursor's project differs, then mutate again.
+	for i := 0; i < 5; i++ {
+		p, _, _, ok := cur.(Model).currentTaskItem()
+		if ok && p != nil && p.Name != firstProj.Name {
+			break
+		}
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	}
+	secondProj, _, _, ok := cur.(Model).currentTaskItem()
+	if !ok || secondProj == nil || secondProj.Name == firstProj.Name {
+		t.Fatalf("could not find a task in a different project")
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+
+	// Two undos.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+
+	// Neither project should contain a Done task after both undos.
+	for _, p := range cur.(Model).allProjectsCache {
+		for _, task := range p.AllTasks() {
+			if task.Status == model.StatusDone {
+				t.Errorf("%s/%q still Done after two undos", p.Name, task.Title)
+			}
+		}
+	}
+}
+
+// If the user mutates in all-projects mode, then exits to a single project
+// that isn't the mutated one, u must show the "project not loaded" banner
+// without modifying any state.
+func TestUndo_projectUnloaded(t *testing.T) {
+	base := twoProjectBase(t)
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+
+	// Move cursor until we're on a task from a project other than "work".
+	for i := 0; i < 5; i++ {
+		p, _, _, ok := cur.(Model).currentTaskItem()
+		if ok && p != nil && p.Name != "work" {
+			break
+		}
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	}
+	p, _, _, ok := cur.(Model).currentTaskItem()
+	if !ok || p == nil || p.Name == "work" {
+		t.Fatalf("could not move cursor off 'work'")
+	}
+	// Mutate the non-work task.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+
+	// Exit all-projects mode. m.project is still "work".
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	if cur.(Model).allProjects {
+		t.Fatalf("expected exit from all-projects mode")
+	}
+
+	// Undo — target project is no longer loaded.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	if cur.(Model).banner != "undo: project not loaded" {
+		t.Errorf("banner = %q, want \"undo: project not loaded\"", cur.(Model).banner)
+	}
+	// Entry should remain on the stack.
+	if len(cur.(Model).undoStack) == 0 {
+		t.Errorf("undoStack empty after blocked undo; want entry retained")
+	}
+}
