@@ -95,6 +95,27 @@ func TestParseBacklog_basic(t *testing.T) {
 	}
 }
 
+func TestParseDone_mixedHeadingLevels(t *testing.T) {
+	b, err := os.ReadFile("testdata/done_mixed_headings.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := ParseDone(b)
+	if err != nil {
+		t.Fatalf("ParseDone: %v", err)
+	}
+	tasks := doc.Tasks()
+	wantDates := []string{"2026-04-18", "2026-04-17", "2026-04-16"}
+	if len(tasks) != 3 {
+		t.Fatalf("got %d tasks, want 3", len(tasks))
+	}
+	for i, ta := range tasks {
+		if ta.Date != wantDates[i] {
+			t.Errorf("task %d date = %q, want %q", i, ta.Date, wantDates[i])
+		}
+	}
+}
+
 func TestParseDone_basic(t *testing.T) {
 	b, err := os.ReadFile("testdata/done_basic.md")
 	if err != nil {

@@ -18,8 +18,8 @@ var (
 	// Captures: 1=title. Must not match task lines (order matters).
 	backlogLineRe = regexp.MustCompile(`^- (.+)$`)
 
-	// Date heading: "# YYYY-MM-DD".
-	dateHeadingRe = regexp.MustCompile(`^# (\d{4}-\d{2}-\d{2})\s*$`)
+	// Date heading: "# YYYY-MM-DD" or "## YYYY-MM-DD".
+	dateHeadingRe = regexp.MustCompile(`^#{1,2} (\d{4}-\d{2}-\d{2})\s*$`)
 )
 
 // ParseActive parses the contents of active.md.
