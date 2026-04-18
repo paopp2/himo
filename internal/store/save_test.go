@@ -21,9 +21,11 @@ func TestSaveProject_atomic(t *testing.T) {
 		t.Fatalf("SaveProject: %v", err)
 	}
 
+	// Save seeds a "# <project>" heading when none is present.
+	want := "# " + filepath.Base(dir) + "\n\n- [ ] A\n"
 	b, _ := os.ReadFile(filepath.Join(dir, "active.md"))
-	if string(b) != "- [ ] A\n" {
-		t.Errorf("active.md after save = %q, want unchanged", string(b))
+	if string(b) != want {
+		t.Errorf("active.md after save = %q, want %q", string(b), want)
 	}
 
 	// No .tmp files left behind.

@@ -74,7 +74,9 @@ func TestAllProjects_insertTargetsCursorProject(t *testing.T) {
 			got = len(proj.Active.Items)
 		}
 	}
-	if got != before+1 {
-		t.Errorf("personal.Active.Items = %d, want %d", got, before+1)
+	// Save also seeds a ProjectHeading at the top of the doc, so the post-save
+	// count is before + 1 (new task) + 1 (heading).
+	if got != before+2 {
+		t.Errorf("personal.Active.Items = %d, want %d", got, before+2)
 	}
 }

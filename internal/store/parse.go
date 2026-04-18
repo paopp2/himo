@@ -20,11 +20,80 @@ var (
 
 	// Date heading: "# YYYY-MM-DD" or "## YYYY-MM-DD".
 	dateHeadingRe = regexp.MustCompile(`^#{1,2} (\d{4}-\d{2}-\d{2})\s*$`)
+
+	// Leading H1 project heading: "# <text>". Captures: 1=text.
+	projectHeadingRe = regexp.MustCompile(`^# (.+)$`)
 )
 
 // ParseActive parses the contents of active.md.
 func ParseActive(b []byte) (*Document, error) {
-	return parseDoc(b, parseActiveLine)
+	ph, rest := extractProjectHeading(b)
+	doc, err := parseDoc(rest, parseActiveLine)
+	if err != nil {
+		return nil, err
+	}
+	return prependHeading(doc, ph), nil
+}
+
+// extractProjectHeading peels off a leading H1 from b. If the first
+// non-blank line is an H1 that is not a date heading, it returns a
+// ProjectHeading item and the remaining bytes with the heading line and
+// up to one trailing blank line consumed. Otherwise it returns nil and b
+// unchanged.
+//
+// Leading blank lines before the heading are also consumed (they're an
+// editor artifact, not semantic content). If a file starts with content
+// that doesn't match a project heading, b is returned untouched so the
+// main parser sees the full input.
+func extractProjectHeading(b []byte) (*ProjectHeading, []byte) {
+	// Work line-by-line, keeping the raw newline-terminated slices so we
+	// can splice the remainder back together losslessly.
+	lines := bytes.SplitAfter(b, []byte("\n"))
+	// Drop a trailing empty chunk produced when b ends with "\n".
+	if n := len(lines); n > 0 && len(lines[n-1]) == 0 {
+		lines = lines[:n-1]
+	}
+
+	i := 0
+	for i < len(lines) && isBlankLine(lines[i]) {
+		i++
+	}
+	if i >= len(lines) {
+		return nil, b
+	}
+	line := strings.TrimRight(string(lines[i]), "\n")
+	if dateHeadingRe.MatchString(line) {
+		return nil, b
+	}
+	m := projectHeadingRe.FindStringSubmatch(line)
+	if m == nil {
+		return nil, b
+	}
+	name := strings.TrimSpace(m[1])
+	ph := &ProjectHeading{Name: name, RawLine: line}
+
+	// Consume through this heading line + one trailing blank if present.
+	end := i + 1
+	if end < len(lines) && isBlankLine(lines[end]) {
+		end++
+	}
+	rest := bytes.Join(lines[end:], nil)
+	return ph, rest
+}
+
+func isBlankLine(line []byte) bool {
+	return len(line) == 0 || bytes.Equal(line, []byte("\n"))
+}
+
+func prependHeading(doc *Document, ph *ProjectHeading) *Document {
+	if ph == nil {
+		return doc
+	}
+	items := make([]Item, 0, len(doc.Items)+1)
+	items = append(items, *ph)
+	items = append(items, doc.Items...)
+	doc.Items = items
+	return doc
 }
 
 // lineParser classifies a single line as a task, date heading, or opaque.
@@ -118,7 +187,12 @@ func parseActiveLine(line string) (Item, bool) {
 
 // ParseBacklog parses the contents of backlog.md.
 func ParseBacklog(b []byte) (*Document, error) {
-	return parseDoc(b, parseBacklogLine)
+	ph, rest := extractProjectHeading(b)
+	doc, err := parseDoc(rest, parseBacklogLine)
+	if err != nil {
+		return nil, err
+	}
+	return prependHeading(doc, ph), nil
 }
 
 func parseBacklogLine(line string) (Item, bool) {
@@ -136,7 +210,8 @@ func parseBacklogLine(line string) (Item, bool) {
 // ParseDone parses the contents of done.md. Task Date fields are set to the
 // current date heading the task appears under (empty if outside any heading).
 func ParseDone(b []byte) (*Document, error) {
-	doc, err := parseDoc(b, parseDoneLine)
+	ph, rest := extractProjectHeading(b)
+	doc, err := parseDoc(rest, parseDoneLine)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +226,7 @@ func ParseDone(b []byte) (*Document, error) {
 			doc.Items[i] = it
 		}
 	}
-	return doc, nil
+	return prependHeading(doc, ph), nil
 }
 
 func parseDoneLine(line string) (Item, bool) {

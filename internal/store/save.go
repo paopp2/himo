@@ -32,6 +32,12 @@ func SaveProject(p *Project) error {
 			return fmt.Errorf("%s: %w", name, ErrConflict)
 		}
 	}
+	// Ensure each file has a leading "# <project>" heading so editor
+	// sessions always show which project is being edited.
+	ensureProjectHeadingDoc(p.Active, p.Name)
+	ensureProjectHeadingDoc(p.Backlog, p.Name)
+	ensureProjectHeadingDoc(p.Done, p.Name)
+
 	// Write phase.
 	writes := []struct {
 		name string

@@ -28,6 +28,17 @@ type DateHeading struct {
 
 func (DateHeading) isItem() {}
 
+// ProjectHeading is the leading "# <project-name>" H1 that tells editor
+// users which project they're editing. Render emits it followed by one
+// blank line (the parser consumes the same trailing blank for a clean
+// round-trip).
+type ProjectHeading struct {
+	Name    string
+	RawLine string
+}
+
+func (ProjectHeading) isItem() {}
+
 // OpaqueLines preserves lines we don't recognize (blank lines, stray text,
 // non-date headings, fenced code). Adjacent opaque lines are grouped.
 type OpaqueLines struct {

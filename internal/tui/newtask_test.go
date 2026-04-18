@@ -18,15 +18,20 @@ func TestNewTask_OInsertsAbove(t *testing.T) {
 	}
 	final, _ := mid.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
 	active := final.(Model).project.Active.Items
-	if len(active) == 0 {
-		t.Fatal("active items empty after O insert")
+	// Save seeds a ProjectHeading at Items[0]; the inserted task is next.
+	idx := 0
+	if _, isHeading := active[0].(store.ProjectHeading); isHeading {
+		idx = 1
 	}
-	ti, ok := active[0].(store.TaskItem)
+	if len(active) <= idx {
+		t.Fatal("no task items after O insert")
+	}
+	ti, ok := active[idx].(store.TaskItem)
 	if !ok {
-		t.Fatalf("active[0] = %T, want TaskItem", active[0])
+		t.Fatalf("active[%d] = %T, want TaskItem", idx, active[idx])
 	}
 	if ti.Task.Title != "First" {
-		t.Errorf("active[0].Title = %q, want First", ti.Task.Title)
+		t.Errorf("inserted task title = %q, want First", ti.Task.Title)
 	}
 	if final.(Model).promptAbove {
 		t.Errorf("promptAbove still true after Enter; want cleared")

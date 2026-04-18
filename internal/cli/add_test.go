@@ -30,7 +30,7 @@ func TestAddTask_appendsBelowExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(filepath.Join(base, "work", "active.md"))
-	want := "- [/] A\n- [ ] B\n"
+	want := "# work\n\n- [/] A\n- [ ] B\n"
 	if string(b) != want {
 		t.Errorf("active.md = %q, want %q", b, want)
 	}
