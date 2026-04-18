@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/npaolopepito/himo/internal/model"
 	"github.com/npaolopepito/himo/internal/store"
 )
@@ -113,6 +115,52 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 		fmt.Fprintf(&b, "%s%s %s%s\n", prefix, marker, title, note)
 	}
 	return b.String()
+}
+
+type renderTaskOpts struct {
+	Width       int
+	Cursor      bool
+	AllProjects bool
+	ProjectName string
+}
+
+// renderTaskLine returns a single styled row for t.
+// Layout: "▌ ● [work] Buy groceries                 •"
+// - leftmost col: cursor bar or space
+// - glyph
+// - optional [project] chip
+// - title (styled per status)
+// - right-aligned notes dot or space
+func renderTaskLine(st *Styles, t model.Task, o renderTaskOpts) string {
+	bar := " "
+	if o.Cursor {
+		bar = st.CursorBar.Render("▌")
+	}
+	glyph := st.GlyphStyle(t.Status).Render(st.StatusGlyph(t.Status))
+
+	title := t.Title
+	if o.AllProjects && o.ProjectName != "" {
+		title = st.Muted.Render("["+o.ProjectName+"] ") + title
+	}
+	title = st.TitleStyle(t.Status).Render(title)
+
+	dot := " "
+	if t.HasNotes() {
+		dot = st.Muted.Render("•")
+	}
+
+	// Build the row with fixed slots: bar + glyph + title, right-align dot.
+	left := bar + " " + glyph + " " + title
+	padding := o.Width - lipgloss.Width(left) - 2
+	if padding < 1 {
+		padding = 1
+	}
+	row := left + strings.Repeat(" ", padding) + dot
+
+	if o.Cursor {
+		row = st.CursorRowBG.Render(row)
+	}
+	return row
 }
 
 func renderPicker(m Model) string {
