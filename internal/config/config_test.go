@@ -56,3 +56,41 @@ func TestLoad_missingFile(t *testing.T) {
 		t.Errorf("Load(missing) err = %v, want os.IsNotExist", err)
 	}
 }
+
+func TestLoad_visualFlags(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	os.WriteFile(path, []byte(`
+base_dir = "/tmp/x"
+ascii_glyphs = true
+no_color = true
+`), 0o644)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.AsciiGlyphs {
+		t.Errorf("AsciiGlyphs = false, want true")
+	}
+	if !cfg.NoColor {
+		t.Errorf("NoColor = false, want true")
+	}
+}
+
+func TestLoad_visualFlagsDefault(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	os.WriteFile(path, []byte(`base_dir = "/tmp/x"`), 0o644)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.AsciiGlyphs {
+		t.Errorf("AsciiGlyphs default = true, want false")
+	}
+	if cfg.NoColor {
+		t.Errorf("NoColor default = true, want false")
+	}
+}

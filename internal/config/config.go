@@ -14,6 +14,8 @@ type Config struct {
 	Editor         string `toml:"editor"`
 	DefaultProject string `toml:"default_project"`
 	PreviewPane    bool   `toml:"preview_pane"`
+	AsciiGlyphs    bool   `toml:"ascii_glyphs"`
+	NoColor        bool   `toml:"no_color"`
 
 	// Path of the config file this was loaded from (for save).
 	Path string `toml:"-"`
