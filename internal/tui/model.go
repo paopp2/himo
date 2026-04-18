@@ -617,6 +617,7 @@ func (m *Model) deleteCurrent() {
 	if !ok {
 		return
 	}
+	m.pushUndo(proj)
 	removed := doc.Items[idx]
 	doc.Items = append(doc.Items[:idx], doc.Items[idx+1:]...)
 	if err := m.saveWithBanner(proj, "delete"); err != nil {
@@ -624,6 +625,7 @@ func (m *Model) deleteCurrent() {
 		doc.Items = append(doc.Items, nil)
 		copy(doc.Items[idx+1:], doc.Items[idx:])
 		doc.Items[idx] = removed
+		m.popUndo()
 		return
 	}
 	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {

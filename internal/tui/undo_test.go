@@ -53,3 +53,38 @@ func TestUndo_statusChange(t *testing.T) {
 		t.Errorf("after undo: len(undoStack) = %d, want 0", n)
 	}
 }
+
+// Press d then y to delete the current task, then u. The deleted task must
+// return at its original index.
+func TestUndo_delete(t *testing.T) {
+	m := NewModel(testProject(t))
+	before := m.visibleTasks()
+	if len(before) < 2 {
+		t.Fatal("need at least 2 visible tasks for this test")
+	}
+	title := before[0].Title
+
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	m3, _ := m2.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	// Confirm deletion happened.
+	for _, task := range m3.(Model).project.AllTasks() {
+		if task.Title == title {
+			t.Fatalf("pre-undo: %q still present after d+y", title)
+		}
+	}
+
+	m4, _ := m3.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	um := m4.(Model)
+	found := false
+	for _, task := range um.project.AllTasks() {
+		if task.Title == title {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("after undo: %q missing; want restored", title)
+	}
+	if um.cursor != 0 {
+		t.Errorf("after undo: cursor = %d, want 0", um.cursor)
+	}
+}
