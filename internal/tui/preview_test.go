@@ -9,7 +9,7 @@ import (
 
 func TestPreview_showsNotesForHighlightedTask(t *testing.T) {
 	m := NewModel(testProject(t))
-	m.width = 120
+	m.width, m.height = 120, 30
 	// Add notes to the first task.
 	m.project.Active.Items[0] = editTaskNotes(m.project.Active.Items[0], "Check the fridge first.")
 	view := renderView(m)

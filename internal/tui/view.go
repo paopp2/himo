@@ -405,7 +405,26 @@ func renderPreview(in previewInput) string {
 	if header != "" {
 		content = header + "\n\n" + body
 	}
+	// lipgloss.Height is a minimum, so long notes would otherwise grow the
+	// box past its allotted paneHeight and overflow the terminal. Clamp
+	// here, marking truncation with a muted ellipsis.
+	content = clampLines(content, height-2, in.Styles.Muted.Render("…"))
 	return in.Styles.PaneBorderFocused.Width(width - 2).Height(height - 2).Render(content)
+}
+
+// clampLines returns s trimmed to at most n lines. When truncated, the
+// last line is replaced with marker so the reader sees content was cut.
+func clampLines(s string, n int, marker string) string {
+	if n <= 0 {
+		return ""
+	}
+	lines := strings.Split(s, "\n")
+	if len(lines) <= n {
+		return s
+	}
+	lines = lines[:n]
+	lines[n-1] = marker
+	return strings.Join(lines, "\n")
 }
 
 func stripNotesIndent(notes string) string {

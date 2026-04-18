@@ -29,6 +29,31 @@ func TestRenderPreview_noNotes(t *testing.T) {
 	}
 }
 
+func TestRenderPreview_longNotesClampedToHeight(t *testing.T) {
+	st := testStyles(t)
+	var notes strings.Builder
+	for i := 0; i < 40; i++ {
+		notes.WriteString("    - a note line\n")
+	}
+	out := renderPreview(previewInput{
+		Styles: st, Width: 50, Height: 10,
+		Task: &model.Task{
+			Status: model.StatusActive,
+			Title:  "Long notes",
+			Notes:  notes.String(),
+		},
+	})
+	if got := strings.Count(out, "\n") + 1; got != 10 {
+		t.Errorf("preview height = %d lines, want 10", got)
+	}
+	if !strings.Contains(out, "Long notes") {
+		t.Errorf("header got clipped out of truncated preview:\n%s", out)
+	}
+	if !strings.Contains(out, "…") {
+		t.Errorf("expected truncation marker in clamped preview:\n%s", out)
+	}
+}
+
 func TestRenderPreview_hasNotes(t *testing.T) {
 	st := testStyles(t)
 	out := renderPreview(previewInput{
