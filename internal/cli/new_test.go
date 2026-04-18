@@ -33,3 +33,15 @@ func TestNewProject_invalidName(t *testing.T) {
 		}
 	}
 }
+
+func TestNewProject_seedsHeading(t *testing.T) {
+	base := t.TempDir()
+	if err := NewProject(base, "work"); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join(base, "work", "active.md"))
+	want := "# work\n\n"
+	if string(b) != want {
+		t.Errorf("active.md = %q, want %q", string(b), want)
+	}
+}
