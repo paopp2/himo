@@ -319,6 +319,27 @@ func TestUndo_projectUnloaded(t *testing.T) {
 	}
 }
 
+// After returning from $EDITOR, undo/redo history must be cleared — the
+// external edit may have rewritten the file and existing snapshots are
+// stale.
+func TestUndo_clearedOnEditorReturn(t *testing.T) {
+	m := NewModel(testProject(t))
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	if len(cur.(Model).undoStack) == 0 {
+		t.Fatal("precondition: expected undoStack to be non-empty after x")
+	}
+
+	// Simulate the editor returning without error.
+	cur, _ = cur.(Model).Update(editorReturnedMsg{})
+	um := cur.(Model)
+	if len(um.undoStack) != 0 {
+		t.Errorf("undoStack len = %d after editor return, want 0", len(um.undoStack))
+	}
+	if len(um.redoStack) != 0 {
+		t.Errorf("redoStack len = %d after editor return, want 0", len(um.redoStack))
+	}
+}
+
 // If undo's save step fails (mtime conflict), the in-memory state must be
 // reverted and the entry must stay on the undo stack.
 func TestUndo_saveFailure(t *testing.T) {

@@ -202,6 +202,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case editorReturnedMsg:
+		m.undoStack = nil
+		m.redoStack = nil
 		if msg.err != nil {
 			m.banner = "editor: " + msg.err.Error()
 		}
