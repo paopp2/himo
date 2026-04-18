@@ -78,3 +78,36 @@ func TestEditorCmd_notesLocation(t *testing.T) {
 		t.Errorf("cmd line = %d, want 1", cmd.Line)
 	}
 }
+
+// TestEditorCmd_accountsForProjectHeading verifies the line number jumps
+// past the "# name\n\n" that Render always emits.
+func TestEditorCmd_accountsForProjectHeading(t *testing.T) {
+	dir := t.TempDir()
+	contents := "# myproj\n\n- [ ] first\n- [ ] second\n"
+	if err := os.WriteFile(filepath.Join(dir, "active.md"), []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(dir, "backlog.md"), []byte(""), 0o644)
+	os.WriteFile(filepath.Join(dir, "done.md"), []byte(""), 0o644)
+	p, err := store.LoadProject(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := NewModel(p)
+	m.cursor = 0 // first task -> line 3 (heading + blank + 1)
+	cmd, err := m.editorCmdForNotes()
+	if err != nil {
+		t.Fatalf("editorCmdForNotes: %v", err)
+	}
+	if cmd.Line != 3 {
+		t.Errorf("cmd line = %d, want 3", cmd.Line)
+	}
+	m.cursor = 1 // second task -> line 4
+	cmd, err = m.editorCmdForNotes()
+	if err != nil {
+		t.Fatalf("editorCmdForNotes: %v", err)
+	}
+	if cmd.Line != 4 {
+		t.Errorf("cmd line = %d, want 4", cmd.Line)
+	}
+}

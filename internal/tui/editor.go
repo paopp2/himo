@@ -87,6 +87,10 @@ func taskLineInFile(doc *store.Document, idx int) (int, error) {
 			line += len(v.RawLines)
 		case store.DateHeading:
 			line += 1
+		case store.ProjectHeading:
+			// Render always emits "# name\n\n" (heading + one trailing
+			// blank), so the heading takes two lines in the on-disk layout.
+			line += 2
 		case store.OpaqueLines:
 			line += len(v.Lines)
 		}
