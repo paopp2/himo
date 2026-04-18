@@ -61,7 +61,7 @@ func NewStylesWithRenderer(r *lipgloss.Renderer, opts StyleOptions) *Styles {
 	}
 
 	muted := lipgloss.AdaptiveColor{Light: "#9ca3af", Dark: "#6b7280"}
-	accent := lipgloss.AdaptiveColor{Light: "#0d9488", Dark: "#2dd4bf"}
+	accent := lipgloss.AdaptiveColor{Light: "#008787", Dark: "#008787"}
 	errc := lipgloss.AdaptiveColor{Light: "#b91c1c", Dark: "#ef4444"}
 	ok := lipgloss.AdaptiveColor{Light: "#15803d", Dark: "#22c55e"}
 	subtle := lipgloss.AdaptiveColor{Light: "#e5e7eb", Dark: "#374151"}

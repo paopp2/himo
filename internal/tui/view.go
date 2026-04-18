@@ -16,14 +16,9 @@ const (
 	// preview pane also hides at this width, so everything collapses together.
 	narrowThreshold  = 100
 	previewThreshold = 100 // below this, the preview pane hides.
-	previewGutter    = 3   // cells between list pane and preview pane.
-	// bodyVerticalChrome = top bar (1) + filter bar (1) + blank separator (1)
-	// + hint bar (1) + pane top border (1) + pane bottom border (1). The two
-	// border rows live outside lipgloss's Height(n), so the pane actually
-	// renders n+2 rows tall — we subtract all 6 to fit m.height exactly.
-	bodyVerticalChrome = 6
-	defaultWidth       = 80
-	defaultHeight      = 10
+	paneSeparator    = 2   // "  " between list and preview panes.
+	defaultWidth     = 80
+	defaultHeight    = 10
 )
 
 func renderHelp(st *Styles, width int) string {
@@ -129,13 +124,19 @@ func renderView(m Model) string {
 	})
 	fbar := renderFilterBar(m.styles, m.filter, m.statusCounts(), width)
 
-	paneHeight := m.height - bodyVerticalChrome
+	// Non-pane chrome rows: top bar + [filter bar] + blank + hint bar.
+	chromeRows := 3
+	if fbar != "" {
+		chromeRows = 4
+	}
+	paneHeight := m.height - chromeRows
+
 	var body string
 	if width < previewThreshold || m.hidePreview {
 		body = renderListPane(m, locs, tasks, width, paneHeight)
 	} else {
 		listW := width * 60 / 100
-		previewW := width - listW - previewGutter
+		previewW := width - listW - paneSeparator
 		var previewTask *model.Task
 		if len(tasks) > 0 && m.cursor < len(tasks) {
 			previewTask = &tasks[m.cursor]
@@ -247,7 +248,10 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	}
 
 	visible := strings.Join(rows[start:end], "\n")
-	return m.styles.PaneBorderFocused.Width(width).Height(height).Render(visible)
+	// Subtract 2 from both dims so the rendered box (inner + border) is
+	// exactly width x height cells. Lipgloss adds the border outside of
+	// Width/Height.
+	return m.styles.PaneBorderFocused.Width(width - 2).Height(height - 2).Render(visible)
 }
 
 func renderGhostRow(st *Styles, buf string, width int) string {
@@ -372,7 +376,7 @@ func renderPreview(in previewInput) string {
 	}
 
 	content := header + "\n\n" + body
-	return in.Styles.PaneBorderFocused.Width(width).Height(height).Render(content)
+	return in.Styles.PaneBorderFocused.Width(width - 2).Height(height - 2).Render(content)
 }
 
 func stripNotesIndent(notes string) string {
