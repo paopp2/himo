@@ -121,3 +121,23 @@ func TestUndo_insert(t *testing.T) {
 		t.Errorf("after undo: cursor = %d, want %d", um.cursor, origCursor)
 	}
 }
+
+// After undoing a status change, Ctrl-R must re-apply the change.
+func TestRedo_afterStatusUndo(t *testing.T) {
+	m := NewModel(testProject(t))
+	title := m.visibleTasks()[0].Title
+
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	um := cur.(Model)
+
+	for _, task := range um.project.AllTasks() {
+		if task.Title == title && task.Status != model.StatusDone {
+			t.Errorf("after redo: %q status = %v, want done", title, task.Status)
+		}
+	}
+	if um.banner != "redone" {
+		t.Errorf("after redo: banner = %q, want \"redone\"", um.banner)
+	}
+}

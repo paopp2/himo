@@ -104,5 +104,36 @@ func (m *Model) undo() {
 	m.banner = "undone"
 }
 
-// redo is the mirror of undo. Filled in by Task 4.
-func (m *Model) redo() {}
+// redo pops the top redo entry, snapshots current state onto undoStack,
+// applies the entry, saves, and restores the cursor. Symmetrical to undo.
+// The redo stack is NOT cleared here; only pushUndo (a new mutation) clears
+// it. redo must NOT go through pushUndo, because pushUndo would clear the
+// redoStack.
+func (m *Model) redo() {
+	if len(m.redoStack) == 0 {
+		return
+	}
+	entry := m.redoStack[len(m.redoStack)-1]
+	proj := m.projectByDir(entry.projectDir)
+	if proj == nil {
+		m.banner = "redo: project not loaded"
+		return
+	}
+
+	current := snapshotOf(proj, m.cursor)
+	applyEntry(proj, entry)
+	if err := m.saveWithBanner(proj, "redo"); err != nil {
+		applyEntry(proj, current)
+		return
+	}
+	m.redoStack = m.redoStack[:len(m.redoStack)-1]
+	m.undoStack = append(m.undoStack, current)
+	if len(m.undoStack) > historyLimit {
+		m.undoStack = m.undoStack[len(m.undoStack)-historyLimit:]
+	}
+	m.cursor = entry.cursor
+	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
+		m.cursor = n - 1
+	}
+	m.banner = "redone"
+}
