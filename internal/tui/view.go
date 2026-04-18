@@ -395,8 +395,29 @@ func renderPreview(in previewInput) string {
 
 func stripNotesIndent(notes string) string {
 	lines := strings.Split(notes, "\n")
+	// Strip the minimum common leading-space indent so relative indentation
+	// (e.g. nested list items) survives. Hardcoding a 4-space strip flattens
+	// mixed-indent notes into a single level.
+	minIndent := -1
+	for _, ln := range lines {
+		if strings.TrimSpace(ln) == "" {
+			continue
+		}
+		n := 0
+		for n < len(ln) && ln[n] == ' ' {
+			n++
+		}
+		if minIndent == -1 || n < minIndent {
+			minIndent = n
+		}
+	}
+	if minIndent < 0 {
+		minIndent = 0
+	}
 	for i, ln := range lines {
-		ln = strings.TrimPrefix(ln, "    ")
+		if len(ln) >= minIndent {
+			ln = ln[minIndent:]
+		}
 		// Markdown treats adjacent non-blank lines as soft-wrapped text in
 		// the same paragraph; our users type each note line expecting it
 		// to render on its own row. Append CommonMark's two-space hard
