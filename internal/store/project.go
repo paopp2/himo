@@ -151,13 +151,23 @@ func insertDone(doc *Document, incoming []TaskItem, today string) *Document {
 			return out
 		}
 	}
-	// Else prepend a new heading and the tasks.
+	// Insert a new date heading and the tasks. If a leading
+	// ProjectHeading is present, keep it at position 0 so the file still
+	// starts with the project chrome — otherwise the save step would add
+	// another heading on top and leave the original one orphaned.
+	prefix := 0
+	if len(doc.Items) > 0 {
+		if _, ok := doc.Items[0].(ProjectHeading); ok {
+			prefix = 1
+		}
+	}
 	out := &Document{Items: make([]Item, 0, len(doc.Items)+len(stamped)+2)}
+	out.Items = append(out.Items, doc.Items[:prefix]...)
 	out.Items = append(out.Items, DateHeading{Date: today})
 	out.Items = append(out.Items, stamped...)
-	if len(doc.Items) > 0 {
+	if len(doc.Items) > prefix {
 		out.Items = append(out.Items, OpaqueLines{Lines: []string{""}}) // blank separator
-		out.Items = append(out.Items, doc.Items...)
+		out.Items = append(out.Items, doc.Items[prefix:]...)
 	}
 	return out
 }
