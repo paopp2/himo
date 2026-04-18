@@ -639,6 +639,7 @@ func (m *Model) insertNewTask(title string) {
 	if m.allProjects && haveCursor {
 		target = cursorProj
 	}
+	m.pushUndo(target)
 	var task model.Task
 	var targetDoc *store.Document
 	if m.isBacklogFilter() {
@@ -664,6 +665,7 @@ func (m *Model) insertNewTask(title string) {
 	if err := m.saveWithBanner(target, "new task"); err != nil {
 		// Roll back the insert.
 		targetDoc.Items = append(targetDoc.Items[:insertAt], targetDoc.Items[insertAt+1:]...)
+		m.popUndo()
 		return
 	}
 	// With "o", the new task now sits below the cursor — advance so the

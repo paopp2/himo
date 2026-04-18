@@ -88,3 +88,36 @@ func TestUndo_delete(t *testing.T) {
 		t.Errorf("after undo: cursor = %d, want 0", um.cursor)
 	}
 }
+
+// Press o, type a title, Enter. Then u. The newly inserted task must be gone
+// and the cursor must be where it was before the insert.
+func TestUndo_insert(t *testing.T) {
+	m := NewModel(testProject(t))
+	origCursor := m.cursor
+	origCount := len(m.project.AllTasks())
+
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	for _, r := range "ephemeral" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	// Confirm insert.
+	if got := len(cur.(Model).project.AllTasks()); got != origCount+1 {
+		t.Fatalf("pre-undo: task count = %d, want %d", got, origCount+1)
+	}
+
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	um := cur.(Model)
+	if got := len(um.project.AllTasks()); got != origCount {
+		t.Errorf("after undo: task count = %d, want %d", got, origCount)
+	}
+	for _, task := range um.project.AllTasks() {
+		if task.Title == "ephemeral" {
+			t.Errorf("after undo: \"ephemeral\" still present")
+		}
+	}
+	if um.cursor != origCursor {
+		t.Errorf("after undo: cursor = %d, want %d", um.cursor, origCursor)
+	}
+}
