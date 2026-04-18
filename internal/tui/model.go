@@ -755,6 +755,17 @@ func (m *Model) enterAllProjects() {
 		return
 	}
 	m.reloadAllProjects()
+	// Rebind m.project to the cached pointer so mutations, mtime updates,
+	// and projectByDir lookups all reference the same *store.Project.
+	if m.project != nil {
+		want := m.project.Dir
+		for _, p := range m.allProjectsCache {
+			if p != nil && p.Dir == want {
+				m.project = p
+				break
+			}
+		}
+	}
 	m.allProjects = true
 	m.cursor = 0
 }
