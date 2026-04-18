@@ -1,0 +1,71 @@
+package tui
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+
+	"github.com/npaolopepito/himo/internal/model"
+)
+
+func TestStatusGlyph_unicode(t *testing.T) {
+	cases := []struct {
+		s    model.Status
+		want string
+	}{
+		{model.StatusBacklog, "○"},
+		{model.StatusPending, "○"},
+		{model.StatusActive, "●"},
+		{model.StatusBlocked, "●"},
+		{model.StatusDone, "✓"},
+		{model.StatusCancelled, "✗"},
+	}
+	st := NewStyles(StyleOptions{})
+	for _, tc := range cases {
+		got := st.StatusGlyph(tc.s)
+		if got != tc.want {
+			t.Errorf("StatusGlyph(%v) = %q, want %q", tc.s, got, tc.want)
+		}
+	}
+}
+
+func TestStatusGlyph_ascii(t *testing.T) {
+	cases := []struct {
+		s    model.Status
+		want string
+	}{
+		{model.StatusBacklog, "o"},
+		{model.StatusPending, "o"},
+		{model.StatusActive, "*"},
+		{model.StatusBlocked, "*"},
+		{model.StatusDone, "x"},
+		{model.StatusCancelled, "-"},
+	}
+	st := NewStyles(StyleOptions{AsciiGlyphs: true})
+	for _, tc := range cases {
+		got := st.StatusGlyph(tc.s)
+		if got != tc.want {
+			t.Errorf("StatusGlyph(%v) = %q, want %q", tc.s, got, tc.want)
+		}
+	}
+}
+
+func TestStyles_noColor_rendersPlainText(t *testing.T) {
+	st := NewStyles(StyleOptions{NoColor: true})
+	out := st.Accent.Render("hello")
+	if strings.Contains(out, "\x1b[38") || strings.Contains(out, "\x1b[48") {
+		t.Errorf("no_color output contained color escape: %q", out)
+	}
+}
+
+func TestStyles_trueColor_emitsColorEscape(t *testing.T) {
+	r := lipgloss.NewRenderer(nil, termenv.WithProfile(termenv.TrueColor))
+	r.SetColorProfile(termenv.TrueColor)
+	st := NewStylesWithRenderer(r, StyleOptions{})
+	out := st.Accent.Render("hello")
+	if !strings.Contains(out, "\x1b[") {
+		t.Errorf("true-color accent render produced no escape: %q", out)
+	}
+}
