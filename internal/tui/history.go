@@ -47,13 +47,19 @@ func cloneItems(items []store.Item) []store.Item {
 	return out
 }
 
-// pushUndo records a snapshot of proj before a mutation. The redo stack is
-// cleared because any new mutation invalidates forward history.
+// pushUndo records a pre-mutation snapshot of proj. redoStack is NOT cleared
+// here — clearing is deferred to commitUndo, so a mutation that fails its
+// normalize or save step does not destroy forward history.
 func (m *Model) pushUndo(proj *store.Project) {
 	m.undoStack = append(m.undoStack, snapshotOf(proj, m.cursor))
 	if len(m.undoStack) > historyLimit {
 		m.undoStack = m.undoStack[len(m.undoStack)-historyLimit:]
 	}
+}
+
+// commitUndo marks the last pushUndo as final: the mutation succeeded, so
+// any pending redo history is invalidated.
+func (m *Model) commitUndo() {
 	m.redoStack = nil
 }
 

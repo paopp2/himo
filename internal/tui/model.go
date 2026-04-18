@@ -536,6 +536,7 @@ func (m *Model) setStatus(s model.Status) {
 		m.popUndo()
 		return
 	}
+	m.commitUndo()
 	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
 		m.cursor = n - 1
 	}
@@ -628,6 +629,7 @@ func (m *Model) deleteCurrent() {
 		m.popUndo()
 		return
 	}
+	m.commitUndo()
 	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {
 		m.cursor--
 	}
@@ -668,6 +670,7 @@ func (m *Model) insertNewTask(title string) {
 		m.popUndo()
 		return
 	}
+	m.commitUndo()
 	// With "o", the new task now sits below the cursor — advance so the
 	// cursor lands on it (matches vim's o behavior).
 	if !m.promptAbove && haveCursor && m.cursor+1 < len(m.visibleTasks()) {
