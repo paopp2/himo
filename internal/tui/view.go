@@ -255,6 +255,11 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	}
 
 	visible := strings.Join(rows[start:end], "\n")
+	if visible == "" {
+		visible = m.styles.Muted.Render(
+			"No tasks match the current filter.\n" +
+				"Press Esc to reset filter, o to add one.")
+	}
 	// Subtract 2 from both dims so the rendered box (inner + border) is
 	// exactly width x height cells. Lipgloss adds the border outside of
 	// Width/Height.
