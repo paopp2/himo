@@ -11,7 +11,10 @@ import (
 )
 
 const (
-	narrowThreshold  = 80  // below this, top/filter bars collapse.
+	// narrowThreshold collapses the top bar into a single line and hides
+	// the filter bar. The filter chips alone need ~95 cols to fit, and the
+	// preview pane also hides at this width, so everything collapses together.
+	narrowThreshold  = 100
 	previewThreshold = 100 // below this, the preview pane hides.
 	previewGutter    = 3   // cells between list pane and preview pane.
 	// bodyVerticalChrome = top bar (1) + filter bar (1) + blank separator (1)
