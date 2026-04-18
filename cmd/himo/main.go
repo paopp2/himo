@@ -10,6 +10,7 @@ import (
 
 	"github.com/npaolopepito/himo/internal/cli"
 	"github.com/npaolopepito/himo/internal/config"
+	"github.com/npaolopepito/himo/internal/state"
 	"github.com/npaolopepito/himo/internal/store"
 	"github.com/npaolopepito/himo/internal/tui"
 )
@@ -88,7 +89,7 @@ func main() {
 		if err != nil {
 			os.Exit(1)
 		}
-		openTUI(cfg, os.Args[1])
+		openTUI(cfg, os.Args[1], loadState())
 	}
 }
 
@@ -97,7 +98,11 @@ func openTUIWithConfig() {
 	if err != nil {
 		os.Exit(1)
 	}
-	name := cfg.DefaultProject
+	st := loadState()
+	name := st.LastProject
+	if name == "" {
+		name = cfg.DefaultProject
+	}
 	if name == "" {
 		names, err := store.ListProjects(cfg.BaseDir)
 		if err != nil {
@@ -110,10 +115,10 @@ func openTUIWithConfig() {
 		}
 		name = names[0]
 	}
-	openTUI(cfg, name)
+	openTUI(cfg, name, st)
 }
 
-func openTUI(cfg *config.Config, project string) {
+func openTUI(cfg *config.Config, project string, st *state.State) {
 	m, err := tui.NewModelFromBase(cfg.BaseDir, project, tui.StyleOptions{
 		AsciiGlyphs: cfg.AsciiGlyphs,
 		NoColor:     cfg.NoColor,
@@ -122,10 +127,36 @@ func openTUI(cfg *config.Config, project string) {
 		fmt.Fprintln(os.Stderr, "himo:", err)
 		os.Exit(1)
 	}
-	if _, err := tea.NewProgram(m, tea.WithAltScreen()).Run(); err != nil {
+	if st.LastFilter != "" {
+		m = m.WithFilter(tui.FilterFromName(st.LastFilter))
+	}
+	final, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "himo:", err)
 		os.Exit(1)
 	}
+	if fm, ok := final.(tui.Model); ok {
+		if p := fm.SessionProject(); p != "" {
+			st.LastProject = p
+		}
+		if f := fm.SessionFilter(); f != "" {
+			st.LastFilter = f
+		}
+		if err := state.Save(st); err != nil {
+			fmt.Fprintln(os.Stderr, "himo: save state:", err)
+		}
+	}
+}
+
+// loadState reads the on-disk session state, logging and defaulting to
+// an empty State on any error so a bad state file never blocks launch.
+func loadState() *state.State {
+	st, err := state.Load()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "himo: load state:", err)
+		return &state.State{}
+	}
+	return st
 }
 
 func loadConfigOrExit() (*config.Config, error) {

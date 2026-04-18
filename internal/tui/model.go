@@ -23,6 +23,48 @@ func DefaultFilter() Filter {
 	return Filter{Statuses: []model.Status{model.StatusPending, model.StatusActive, model.StatusBlocked}}
 }
 
+// Name returns a stable short string identifying this filter — "all",
+// "default" (the pending+active+blocked combo), or a single status name.
+// Returns "" for any other shape (not persisted).
+func (f Filter) Name() string {
+	if f.All {
+		return "all"
+	}
+	if isDefaultFilter(f) {
+		return "default"
+	}
+	if len(f.Statuses) == 1 {
+		return f.Statuses[0].String()
+	}
+	return ""
+}
+
+// FilterFromName is the inverse of Filter.Name. Unknown names fall back
+// to the default filter.
+func FilterFromName(name string) Filter {
+	switch name {
+	case "all":
+		return Filter{All: true}
+	case "", "default":
+		return DefaultFilter()
+	}
+	if s, ok := model.ParseStatusName(name); ok {
+		return Filter{Statuses: []model.Status{s}}
+	}
+	return DefaultFilter()
+}
+
+func isDefaultFilter(f Filter) bool {
+	if f.All || len(f.Statuses) != 3 {
+		return false
+	}
+	have := map[model.Status]bool{}
+	for _, s := range f.Statuses {
+		have[s] = true
+	}
+	return have[model.StatusPending] && have[model.StatusActive] && have[model.StatusBlocked]
+}
+
 var digitFilters = map[string]model.Status{
 	"1": model.StatusBacklog,
 	"2": model.StatusPending,
@@ -98,6 +140,28 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 		projects: projects,
 		styles:   NewStyles(opts),
 	}, nil
+}
+
+// WithFilter returns m with its initial filter replaced. Used by main.go
+// to restore a persisted filter on launch.
+func (m Model) WithFilter(f Filter) Model {
+	m.filter = f
+	return m
+}
+
+// SessionProject is the single-project scope the user was in at quit,
+// regardless of whether they were in all-projects view at the moment.
+func (m Model) SessionProject() string {
+	if m.project == nil {
+		return ""
+	}
+	return m.project.Name
+}
+
+// SessionFilter is the current filter encoded as a stable name for state
+// persistence. Returns "" when the filter has no canonical name.
+func (m Model) SessionFilter() string {
+	return m.filter.Name()
 }
 
 func (m Model) Init() tea.Cmd { return nil }

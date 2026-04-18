@@ -257,14 +257,19 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 func renderGhostRow(st *Styles, buf string, width int) string {
 	bar := st.CursorBar.Render("▌")
 	marker := st.Accent.Render("+")
-	body := buf + "_"
-	left := bar + " " + marker + " " + body
+	left := bar + " " + marker + " " + buf + inputCursor(st)
 	padding := width - lipgloss.Width(left)
 	if padding < 0 {
 		padding = 0
 	}
 	row := left + strings.Repeat(" ", padding)
 	return st.CursorRowBG.Render(row)
+}
+
+// inputCursor returns the styled block glyph used as the text-input caret
+// in the ghost row, the prompt, and search.
+func inputCursor(st *Styles) string {
+	return st.Accent.Render("█")
 }
 
 type taskLineInput struct {
