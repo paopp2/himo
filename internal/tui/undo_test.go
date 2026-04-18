@@ -171,6 +171,51 @@ func TestRedo_afterStatusUndo(t *testing.T) {
 	}
 }
 
+// After deleting a task and undoing, Ctrl-R must re-delete it.
+func TestRedo_afterDelete(t *testing.T) {
+	m := NewModel(testProject(t))
+	title := m.visibleTasks()[0].Title
+
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+
+	for _, task := range cur.(Model).project.AllTasks() {
+		if task.Title == title {
+			t.Errorf("after redo: %q present; want deleted again", title)
+		}
+	}
+}
+
+// After inserting a task and undoing, Ctrl-R must re-insert it.
+func TestRedo_afterInsert(t *testing.T) {
+	m := NewModel(testProject(t))
+	origCount := len(m.project.AllTasks())
+
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	for _, r := range "redoable" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+
+	if got := len(cur.(Model).project.AllTasks()); got != origCount+1 {
+		t.Errorf("after redo: task count = %d, want %d", got, origCount+1)
+	}
+	found := false
+	for _, task := range cur.(Model).project.AllTasks() {
+		if task.Title == "redoable" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("after redo: \"redoable\" missing; want re-inserted")
+	}
+}
+
 // After u, making a new mutation must discard the redo stack: Ctrl-R becomes
 // a no-op (banner empty, no status flip on a fresh task).
 func TestRedo_clearedByNewMutation(t *testing.T) {
