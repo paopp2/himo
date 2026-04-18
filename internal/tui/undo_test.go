@@ -27,14 +27,12 @@ func TestUndo_statusChange(t *testing.T) {
 	title := before[1].Title
 	origStatus := before[1].Status
 
-	// Move cursor to index 1 before the mutation.
 	m1, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	if got := m1.(Model).cursor; got != 1 {
 		t.Fatalf("after j: cursor = %d, want 1", got)
 	}
 
 	m2, _ := m1.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
-	// Confirm the mutation actually happened.
 	for _, task := range m2.(Model).project.AllTasks() {
 		if task.Title == title && task.Status != model.StatusDone {
 			t.Fatalf("pre-undo: %q status = %v, want done", title, task.Status)
@@ -61,8 +59,8 @@ func TestUndo_statusChange(t *testing.T) {
 
 // A status change followed by undo must restore the on-disk line exactly,
 // not just Task.Status. Render the active document and compare to the
-// pre-mutation bytes — catches any RawLines aliasing between snapshot and
-// live items.
+// pre-mutation bytes (catches any RawLines aliasing between snapshot and
+// live items).
 func TestUndo_statusChange_preservesRawLines(t *testing.T) {
 	m := NewModel(testProject(t))
 	// Save once up front so the "before" rendering includes any chrome
@@ -95,7 +93,6 @@ func TestUndo_delete(t *testing.T) {
 
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	m3, _ := m2.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
-	// Confirm deletion happened.
 	for _, task := range m3.(Model).project.AllTasks() {
 		if task.Title == title {
 			t.Fatalf("pre-undo: %q still present after d+y", title)
@@ -131,7 +128,6 @@ func TestUndo_insert(t *testing.T) {
 		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
-	// Confirm insert.
 	if got := len(cur.(Model).project.AllTasks()); got != origCount+1 {
 		t.Fatalf("pre-undo: task count = %d, want %d", got, origCount+1)
 	}
@@ -225,7 +221,6 @@ func TestRedo_clearedByNewMutation(t *testing.T) {
 		t.Fatal("need >= 2 visible tasks")
 	}
 
-	// x on task 0, u to revert, j to move to task 1, x on task 1 (new mutation).
 	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
@@ -236,7 +231,6 @@ func TestRedo_clearedByNewMutation(t *testing.T) {
 		before[task.Title] = task.Status
 	}
 
-	// Ctrl-R should now do nothing.
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlR})
 	after := map[string]model.Status{}
 	for _, task := range cur.(Model).project.AllTasks() {
@@ -261,7 +255,6 @@ func TestUndo_stackCap(t *testing.T) {
 	// tasks as soon as they flip to Done and setStatus early-returns on the
 	// empty visible list.
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'0'}})
-	// Alternate x and p to keep producing real mutations.
 	for i := 0; i < 60; i++ {
 		key := 'x'
 		if i%2 == 1 {
@@ -287,11 +280,9 @@ func TestUndo_allProjectsCrossProject(t *testing.T) {
 	var cur tea.Model = m
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
 
-	// Mutate the task the cursor is on (some project).
 	firstProj, _, _, _ := cur.(Model).currentTaskItem()
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 
-	// Move until cursor's project differs, then mutate again.
 	for i := 0; i < 5; i++ {
 		p, _, _, ok := cur.(Model).currentTaskItem()
 		if ok && p != nil && p.Name != firstProj.Name {
@@ -305,11 +296,9 @@ func TestUndo_allProjectsCrossProject(t *testing.T) {
 	}
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 
-	// Two undos.
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 
-	// Neither project should contain a Done task after both undos.
 	for _, p := range cur.(Model).allProjectsCache {
 		for _, task := range p.AllTasks() {
 			if task.Status == model.StatusDone {
@@ -332,7 +321,6 @@ func TestUndo_projectUnloaded(t *testing.T) {
 	var cur tea.Model = m
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
 
-	// Move cursor until we're on a task from a project other than "work".
 	for i := 0; i < 5; i++ {
 		p, _, _, ok := cur.(Model).currentTaskItem()
 		if ok && p != nil && p.Name != "work" {
@@ -344,7 +332,6 @@ func TestUndo_projectUnloaded(t *testing.T) {
 	if !ok || p == nil || p.Name == "work" {
 		t.Fatalf("could not move cursor off 'work'")
 	}
-	// Mutate the non-work task.
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 
 	// Exit all-projects mode. m.project is still "work".
@@ -353,18 +340,16 @@ func TestUndo_projectUnloaded(t *testing.T) {
 		t.Fatalf("expected exit from all-projects mode")
 	}
 
-	// Undo — target project is no longer loaded.
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 	if cur.(Model).banner != "undo: project not loaded" {
 		t.Errorf("banner = %q, want \"undo: project not loaded\"", cur.(Model).banner)
 	}
-	// Entry should remain on the stack.
 	if len(cur.(Model).undoStack) == 0 {
 		t.Errorf("undoStack empty after blocked undo; want entry retained")
 	}
 }
 
-// After returning from $EDITOR, undo/redo history must be cleared — the
+// After returning from $EDITOR, undo/redo history must be cleared: the
 // external edit may have rewritten the file and existing snapshots are
 // stale.
 func TestUndo_clearedOnEditorReturn(t *testing.T) {
@@ -374,7 +359,6 @@ func TestUndo_clearedOnEditorReturn(t *testing.T) {
 		t.Fatal("precondition: expected undoStack to be non-empty after x")
 	}
 
-	// Simulate the editor returning without error.
 	cur, _ = cur.(Model).Update(editorReturnedMsg{})
 	um := cur.(Model)
 	if len(um.undoStack) != 0 {
@@ -398,7 +382,6 @@ func TestUndo_saveFailure(t *testing.T) {
 	}
 	m := NewModel(p)
 
-	// Mutate (this save succeeds).
 	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 
 	// Simulate an external write: bump active.md's mtime to something else.
@@ -407,13 +390,11 @@ func TestUndo_saveFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// undo should now fail to save with ErrConflict.
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 	um := cur.(Model)
 	if !strings.Contains(um.banner, "blocked") {
 		t.Errorf("banner = %q, want one containing \"blocked\"", um.banner)
 	}
-	// In-memory state must still be post-mutation (task is Done).
 	foundDone := false
 	for _, task := range um.project.AllTasks() {
 		if task.Title == "Alpha" && task.Status == model.StatusDone {
@@ -423,7 +404,6 @@ func TestUndo_saveFailure(t *testing.T) {
 	if !foundDone {
 		t.Errorf("after failed undo: Alpha not Done; in-memory state was not reverted")
 	}
-	// Entry must remain on stack.
 	if len(um.undoStack) == 0 {
 		t.Errorf("undoStack empty after failed undo; want entry retained")
 	}

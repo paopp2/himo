@@ -23,8 +23,8 @@ func DefaultFilter() Filter {
 	return Filter{Statuses: []model.Status{model.StatusPending, model.StatusActive, model.StatusBlocked}}
 }
 
-// Name returns a stable short string identifying this filter — "all",
-// "default" (the pending+active+blocked combo), or a single status name.
+// Name returns a stable short string identifying this filter ("all",
+// "default" (the pending+active+blocked combo), or a single status name).
 // Returns "" for any other shape (not persisted).
 func (f Filter) Name() string {
 	if f.All {
@@ -671,7 +671,7 @@ func (m *Model) insertNewTask(title string) {
 		return
 	}
 	m.commitUndo()
-	// With "o", the new task now sits below the cursor — advance so the
+	// With "o", the new task now sits below the cursor; advance so the
 	// cursor lands on it (matches vim's o behavior).
 	if !m.promptAbove && haveCursor && m.cursor+1 < len(m.visibleTasks()) {
 		m.cursor++

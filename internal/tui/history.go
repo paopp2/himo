@@ -8,8 +8,7 @@ import (
 const historyLimit = 50
 
 // historyEntry is a snapshot of one project's three document item slices and
-// the cursor position, taken immediately before a mutation. Restoring this
-// entry reverses the mutation.
+// the cursor position, taken immediately before a mutation.
 type historyEntry struct {
 	projectDir string
 	active     []store.Item
@@ -18,7 +17,6 @@ type historyEntry struct {
 	cursor     int
 }
 
-// snapshotOf captures proj's three document item slices plus the cursor.
 // Slices are copied and TaskItem.RawLines is cloned so later in-place edits
 // (e.g. setStatus rewriting RawLines[0]) do not corrupt the snapshot.
 func snapshotOf(proj *store.Project, cursor int) historyEntry {
@@ -47,9 +45,9 @@ func cloneItems(items []store.Item) []store.Item {
 	return out
 }
 
-// pushUndo records a pre-mutation snapshot of proj. redoStack is NOT cleared
-// here — clearing is deferred to commitUndo, so a mutation that fails its
-// normalize or save step does not destroy forward history.
+// redoStack is NOT cleared here: clearing is deferred to commitUndo, so a
+// mutation that fails its normalize or save step does not destroy forward
+// history.
 func (m *Model) pushUndo(proj *store.Project) {
 	m.undoStack = append(m.undoStack, snapshotOf(proj, m.cursor))
 	if len(m.undoStack) > historyLimit {
@@ -63,17 +61,13 @@ func (m *Model) commitUndo() {
 	m.redoStack = nil
 }
 
-// popUndo removes the top of the undo stack. Used for rollback when a
-// mutation's save step fails after pushUndo was called.
 func (m *Model) popUndo() {
 	if n := len(m.undoStack); n > 0 {
 		m.undoStack = m.undoStack[:n-1]
 	}
 }
 
-// projectByDir finds a loaded project whose Dir matches. In single-project
-// mode only m.project is considered; in all-projects mode, m.allProjectsCache
-// is also searched. Returns nil if the project is no longer loaded.
+// projectByDir returns nil if no loaded project has Dir == dir.
 func (m *Model) projectByDir(dir string) *store.Project {
 	if m.project != nil && m.project.Dir == dir {
 		return m.project
@@ -86,7 +80,7 @@ func (m *Model) projectByDir(dir string) *store.Project {
 	return nil
 }
 
-// applyEntry writes entry's snapshot into proj. Does not save.
+// applyEntry does not save; callers save separately so they can roll back on failure.
 func applyEntry(proj *store.Project, entry historyEntry) {
 	proj.Active.Items = entry.active
 	proj.Backlog.Items = entry.backlog
