@@ -4,8 +4,6 @@ A tiny file-based todo app. Plain markdown, vim-style TUI.
 
 *Himo* is Cebuano for "to make" or "to do."
 
-> Status: under construction. The design is in [`.plan/himo-v1/design.md`](.plan/himo-v1/design.md).
-
 ## Why
 
 Most todo tools ask you to adopt their database, their query language, or their ritual. I wanted something that gets out of the way.
