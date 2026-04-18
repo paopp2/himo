@@ -2,7 +2,7 @@
 [0] All  [1] Backlog 0  [2] Pending 1  [3] Active 1  [4] Blocked 0  [5] Done 0  [6] Cancelled 0
 
 ╭──────────────────────────────────────────────────────────────────────╮  ╭────────────────────────────────────────────╮
-│▌ ○ Buy groceries                                                     │  │Notes  ○ Buy groceries                      │
+│▌ ○ Buy groceries                                                     │  │○ Buy groceries                             │
 │  ● Write design                                                      │  │                                            │
 │                                                                      │  │No notes yet.                               │
 │                                                                      │  │Press Enter to open this task in your       │

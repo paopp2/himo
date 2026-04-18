@@ -351,18 +351,17 @@ func renderPreview(in previewInput) string {
 	var header, body string
 	switch {
 	case in.Task == nil:
-		header = "Notes"
 		body = in.Styles.Muted.Render(
 			"No tasks match the current filter.\n" +
 				"Press Esc to reset filter, o to add one.")
 	case !in.Task.HasNotes():
 		glyph := in.Styles.GlyphStyle(in.Task.Status).Render(in.Styles.StatusGlyph(in.Task.Status))
-		header = "Notes  " + glyph + " " + in.Task.Title
+		header = glyph + " " + in.Task.Title
 		body = in.Styles.Muted.Render(
 			"No notes yet.\nPress Enter to open this task in your editor.")
 	default:
 		glyph := in.Styles.GlyphStyle(in.Task.Status).Render(in.Styles.StatusGlyph(in.Task.Status))
-		header = "Notes  " + glyph + " " + in.Task.Title
+		header = glyph + " " + in.Task.Title
 		raw := stripNotesIndent(in.Task.Notes)
 		// Glamour errors fall back to the raw indented notes. Acceptable:
 		// a malformed renderer config or transient resource issue would
@@ -380,7 +379,10 @@ func renderPreview(in previewInput) string {
 		}
 	}
 
-	content := header + "\n\n" + body
+	content := body
+	if header != "" {
+		content = header + "\n\n" + body
+	}
 	return in.Styles.PaneBorderFocused.Width(width - 2).Height(height - 2).Render(content)
 }
 
