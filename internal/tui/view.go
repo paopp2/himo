@@ -11,10 +11,14 @@ import (
 )
 
 const (
-	narrowThreshold    = 80  // below this, top/filter bars collapse.
-	previewThreshold   = 100 // below this, the preview pane hides.
-	previewGutter      = 3   // cells between list pane and preview pane.
-	bodyVerticalChrome = 4   // top bar + filter bar + blank + hint bar rows.
+	narrowThreshold  = 80  // below this, top/filter bars collapse.
+	previewThreshold = 100 // below this, the preview pane hides.
+	previewGutter    = 3   // cells between list pane and preview pane.
+	// bodyVerticalChrome = top bar (1) + filter bar (1) + blank separator (1)
+	// + hint bar (1) + pane top border (1) + pane bottom border (1). The two
+	// border rows live outside lipgloss's Height(n), so the pane actually
+	// renders n+2 rows tall — we subtract all 6 to fit m.height exactly.
+	bodyVerticalChrome = 6
 	defaultWidth       = 80
 	defaultHeight      = 10
 )
