@@ -50,18 +50,34 @@ func renderView(m Model) string {
 	if m.showingHelp {
 		return helpText
 	}
+	width := m.width
+	if width <= 0 {
+		width = 80
+	}
+
+	top := renderTopBar(m.styles, topBarInput{
+		Projects: m.projects,
+		Current:  m.project.Name,
+		Width:    width,
+		AllMode:  m.allProjects,
+	})
+	fbar := renderFilterBar(m.styles, m.filter, m.statusCounts(), width)
+
 	locs := m.visibleTaskLocations()
 	tasks := make([]model.Task, len(locs))
 	for i, loc := range locs {
 		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
 	}
 	listStr := renderList(m, locs, tasks)
-	var view string
-	if m.width < 100 || m.hidePreview {
-		view = listStr
+	var body string
+	if width < 100 || m.hidePreview {
+		body = listStr
 	} else {
-		view = sideBySide(listStr, renderPreview(m, tasks), m.width)
+		body = sideBySide(listStr, renderPreview(m, tasks), width)
 	}
+
+	view := top + "\n" + fbar + "\n\n" + body
+
 	if m.prompting {
 		view += "> new task: " + m.promptBuf + "_\n"
 	}
@@ -88,15 +104,6 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	if width <= 0 {
 		width = 80
 	}
-	// Header line (will move to top bar in Phase 3; keep terse for now).
-	scope := m.project.Name
-	if m.allProjects {
-		scope = "all"
-	}
-	title := fmt.Sprintf("Tasks — %s — %d visible", scope, len(tasks))
-	b.WriteString(m.styles.Muted.Render(title))
-	b.WriteByte('\n')
-
 	for i, t := range tasks {
 		opts := renderTaskOpts{Width: width, Cursor: i == m.cursor}
 		if m.allProjects && i < len(locs) {
