@@ -221,8 +221,15 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	cursorRow := m.cursor
 	if m.prompting {
 		ghostIdx := len(rows)
-		if m.promptAbove {
-			ghostIdx = m.cursor
+		if len(rows) > 0 {
+			if m.promptAbove {
+				ghostIdx = m.cursor
+			} else {
+				ghostIdx = m.cursor + 1
+			}
+			if ghostIdx < 0 {
+				ghostIdx = 0
+			}
 			if ghostIdx > len(rows) {
 				ghostIdx = len(rows)
 			}

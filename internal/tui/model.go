@@ -627,13 +627,26 @@ func (m *Model) insertNewTask(title string) {
 	}
 	ti := store.TaskItem{Task: task, RawLines: []string{store.RenderTaskLine(task)}}
 	insertAt := len(targetDoc.Items)
-	if m.promptAbove && haveCursor && cursorProj == target && cursorDoc == targetDoc {
-		insertAt = cursorIdx
+	if haveCursor && cursorProj == target && cursorDoc == targetDoc {
+		if m.promptAbove {
+			insertAt = cursorIdx
+		} else {
+			insertAt = cursorIdx + 1
+			if insertAt > len(targetDoc.Items) {
+				insertAt = len(targetDoc.Items)
+			}
+		}
 	}
 	targetDoc.Items = insertAtSlice(targetDoc.Items, insertAt, ti)
 	if err := m.saveWithBanner(target, "new task"); err != nil {
 		// Roll back the insert.
 		targetDoc.Items = append(targetDoc.Items[:insertAt], targetDoc.Items[insertAt+1:]...)
+		return
+	}
+	// With "o", the new task now sits below the cursor — advance so the
+	// cursor lands on it (matches vim's o behavior).
+	if !m.promptAbove && haveCursor && m.cursor+1 < len(m.visibleTasks()) {
+		m.cursor++
 	}
 }
 
