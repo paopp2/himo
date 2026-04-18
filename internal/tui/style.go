@@ -99,11 +99,7 @@ func NewStylesWithRenderer(r *lipgloss.Renderer, opts StyleOptions) *Styles {
 		BorderForeground(accent)
 
 	st.ChipMuted = r.NewStyle().Foreground(muted)
-	st.ChipActive = r.NewStyle().
-		Foreground(accent).
-		Bold(true).
-		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(accent)
+	st.ChipActive = r.NewStyle().Foreground(accent).Bold(true)
 
 	// Mode pill: filled accent background, bright foreground.
 	st.ModePill = r.NewStyle().

@@ -2,7 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/npaolopepito/himo/internal/model"
 )
@@ -41,7 +42,10 @@ func renderFilterBar(st *Styles, f Filter, counts map[model.Status]int, width in
 		return false
 	}
 	var parts []string
-	for _, c := range chips {
+	for i, c := range chips {
+		if i > 0 {
+			parts = append(parts, "  ")
+		}
 		text := fmt.Sprintf("[%s] %s", c.key, c.label)
 		if !c.isAll {
 			text = fmt.Sprintf("%s %d", text, counts[c.st])
@@ -52,5 +56,5 @@ func renderFilterBar(st *Styles, f Filter, counts map[model.Status]int, width in
 			parts = append(parts, st.ChipMuted.Render(text))
 		}
 	}
-	return strings.Join(parts, "  ")
+	return lipgloss.JoinHorizontal(lipgloss.Bottom, parts...)
 }
