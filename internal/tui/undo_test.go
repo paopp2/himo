@@ -1,11 +1,16 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/paopp2/himo/internal/model"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // Press j to move the cursor to task 1, x to mark it done, then u to undo.
@@ -287,5 +292,49 @@ func TestUndo_projectUnloaded(t *testing.T) {
 	// Entry should remain on the stack.
 	if len(cur.(Model).undoStack) == 0 {
 		t.Errorf("undoStack empty after blocked undo; want entry retained")
+	}
+}
+
+// If undo's save step fails (mtime conflict), the in-memory state must be
+// reverted and the entry must stay on the undo stack.
+func TestUndo_saveFailure(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "active.md"), []byte("- [ ] Alpha\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "backlog.md"), []byte(""), 0o644)
+	os.WriteFile(filepath.Join(dir, "done.md"), []byte(""), 0o644)
+	p, err := store.LoadProject(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := NewModel(p)
+
+	// Mutate (this save succeeds).
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+
+	// Simulate an external write: bump active.md's mtime to something else.
+	future := time.Now().Add(5 * time.Second)
+	if err := os.Chtimes(filepath.Join(dir, "active.md"), future, future); err != nil {
+		t.Fatal(err)
+	}
+
+	// undo should now fail to save with ErrConflict.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	um := cur.(Model)
+	if !strings.Contains(um.banner, "blocked") {
+		t.Errorf("banner = %q, want one containing \"blocked\"", um.banner)
+	}
+	// In-memory state must still be post-mutation (task is Done).
+	foundDone := false
+	for _, task := range um.project.AllTasks() {
+		if task.Title == "Alpha" && task.Status == model.StatusDone {
+			foundDone = true
+		}
+	}
+	if !foundDone {
+		t.Errorf("after failed undo: Alpha not Done; in-memory state was not reverted")
+	}
+	// Entry must remain on stack.
+	if len(um.undoStack) == 0 {
+		t.Errorf("undoStack empty after failed undo; want entry retained")
 	}
 }
