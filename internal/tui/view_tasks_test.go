@@ -8,6 +8,7 @@ import (
 	"github.com/muesli/termenv"
 
 	"github.com/npaolopepito/himo/internal/model"
+	"github.com/npaolopepito/himo/internal/store"
 )
 
 func testStyles(t *testing.T) *Styles {
@@ -57,5 +58,26 @@ func TestRenderTaskLine_allProjectsChip(t *testing.T) {
 		renderTaskOpts{Width: 60, AllProjects: true, ProjectName: "work"})
 	if !strings.Contains(line, "[work]") {
 		t.Errorf("project chip missing: %q", line)
+	}
+}
+
+func TestRenderList_usesStyledRows(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.width = 120
+	m.height = 30
+	m.styles = testStyles(t)
+
+	locs := m.visibleTaskLocations()
+	tasks := make([]model.Task, len(locs))
+	for i, loc := range locs {
+		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
+	}
+
+	out := renderList(m, locs, tasks)
+	if !strings.Contains(out, "○") {
+		t.Errorf("list should use Unicode glyph, got:\n%s", out)
+	}
+	if strings.Contains(out, "[ ]") || strings.Contains(out, "[/]") {
+		t.Errorf("list still has raw markers:\n%s", out)
 	}
 }

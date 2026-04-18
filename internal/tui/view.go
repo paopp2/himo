@@ -84,35 +84,27 @@ func renderView(m Model) string {
 
 func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	var b strings.Builder
+	width := m.width
+	if width <= 0 {
+		width = 80
+	}
+	// Header line (will move to top bar in Phase 3; keep terse for now).
 	scope := m.project.Name
 	if m.allProjects {
 		scope = "all"
 	}
-	header := fmt.Sprintf("himo  %s  %s  %d tasks", scope, filterLabel(m.filter), len(tasks))
-	if m.searchActive != "" {
-		header += "  [search: " + m.searchActive + "]"
-	}
-	fmt.Fprintf(&b, "%s\n", header)
-	b.WriteString(strings.Repeat("-", 60))
+	title := fmt.Sprintf("Tasks — %s — %d visible", scope, len(tasks))
+	b.WriteString(m.styles.Muted.Render(title))
 	b.WriteByte('\n')
+
 	for i, t := range tasks {
-		prefix := "  "
-		if i == m.cursor {
-			prefix = "> "
-		}
-		marker := t.Status.Marker()
-		if marker == "" {
-			marker = "-  "
-		}
-		note := "   "
-		if t.HasNotes() {
-			note = " N "
-		}
-		title := t.Title
+		opts := renderTaskOpts{Width: width, Cursor: i == m.cursor}
 		if m.allProjects && i < len(locs) {
-			title = "[" + locs[i].proj.Name + "] " + title
+			opts.AllProjects = true
+			opts.ProjectName = locs[i].proj.Name
 		}
-		fmt.Fprintf(&b, "%s%s %s%s\n", prefix, marker, title, note)
+		b.WriteString(renderTaskLine(m.styles, t, opts))
+		b.WriteByte('\n')
 	}
 	return b.String()
 }

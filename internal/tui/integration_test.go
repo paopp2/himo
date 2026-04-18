@@ -28,7 +28,7 @@ func TestIntegration_cycleAndFilterDone(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'5'}})
 	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
 		s := string(b)
-		return strings.Contains(s, "Write design") && strings.Contains(s, "done")
+		return strings.Contains(s, "Write design") && strings.Contains(s, "✓")
 	}, teatest.WithDuration(2*time.Second))
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	tm.WaitFinished(t)
