@@ -205,4 +205,3 @@ func ListProjects(baseDir string) ([]string, error) {
 	}
 	return names, nil
 }
-

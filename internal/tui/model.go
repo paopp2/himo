@@ -43,28 +43,28 @@ var statusActionKeys = map[string]model.Status{
 
 // Model is the top-level Bubble Tea model.
 type Model struct {
-	project     *store.Project
-	filter      Filter
-	cursor      int
-	width       int
-	height      int
-	quit        bool
-	baseDir     string
-	projects    []string
-	hidePreview bool
-	prompting        bool
-	promptBuf        string
-	promptAbove      bool
-	confirmingDelete bool
-	banner           string
-	searching        bool
-	searchBuf        string
-	searchActive     string
-	showingHelp      bool
-	pickerOpen       bool
-	pickerCursor     int
-	pickerFilter     string
-	allProjects      bool
+	project           *store.Project
+	filter            Filter
+	cursor            int
+	width             int
+	height            int
+	quit              bool
+	baseDir           string
+	projects          []string
+	hidePreview       bool
+	prompting         bool
+	promptBuf         string
+	promptAbove       bool
+	confirmingDelete  bool
+	banner            string
+	searching         bool
+	searchBuf         string
+	searchActive      string
+	showingHelp       bool
+	pickerOpen        bool
+	pickerCursor      int
+	pickerFilter      string
+	allProjects       bool
 	allProjectsCache  []*store.Project
 	editingProjectDir string
 }
