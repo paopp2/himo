@@ -177,3 +177,25 @@ func TestRedo_clearedByNewMutation(t *testing.T) {
 		t.Errorf("redoStack len = %d after new mutation, want 0", len(cur.(Model).redoStack))
 	}
 }
+
+// Issuing 60 mutations must leave undoStack capped at historyLimit (50).
+func TestUndo_stackCap(t *testing.T) {
+	m := NewModel(testProject(t))
+	var cur tea.Model = m
+	// Switch to the All filter so Done tasks stay visible and every key
+	// press finds a task under the cursor. Without this, DefaultFilter hides
+	// tasks as soon as they flip to Done and setStatus early-returns on the
+	// empty visible list.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'0'}})
+	// Alternate x and p to keep producing real mutations.
+	for i := 0; i < 60; i++ {
+		key := 'x'
+		if i%2 == 1 {
+			key = 'p'
+		}
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{key}})
+	}
+	if got := len(cur.(Model).undoStack); got != historyLimit {
+		t.Errorf("undoStack len = %d after 60 mutations, want %d", got, historyLimit)
+	}
+}
