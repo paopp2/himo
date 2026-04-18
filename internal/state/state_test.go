@@ -10,7 +10,7 @@ func TestRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_STATE_HOME", dir)
 
-	want := &State{LastProject: "work", LastFilter: "active"}
+	want := &State{LastProject: "work", LastFilter: "active", LastAllProjects: true}
 	if err := Save(want); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

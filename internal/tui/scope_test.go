@@ -31,6 +31,36 @@ func TestScope_tabSwitchesProject(t *testing.T) {
 	}
 }
 
+func TestSessionAllProjects_reflectsMode(t *testing.T) {
+	base := twoProjectBase(t)
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.SessionAllProjects() {
+		t.Fatalf("fresh model: SessionAllProjects = true, want false")
+	}
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	if !cur.(Model).SessionAllProjects() {
+		t.Errorf("after A: SessionAllProjects = false, want true")
+	}
+}
+
+func TestWithAllProjects_restoresMode(t *testing.T) {
+	base := twoProjectBase(t)
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = m.WithAllProjects()
+	if !m.allProjects {
+		t.Errorf("WithAllProjects: allProjects = false, want true")
+	}
+	if len(m.allProjectsCache) == 0 {
+		t.Errorf("WithAllProjects: allProjectsCache empty, want populated")
+	}
+}
+
 // TestAllProjects_insertTargetsCursorProject verifies o in all-projects mode
 // inserts the new task into the cursor's owning project rather than m.project.
 func TestAllProjects_insertTargetsCursorProject(t *testing.T) {

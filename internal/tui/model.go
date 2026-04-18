@@ -149,6 +149,13 @@ func (m Model) WithFilter(f Filter) Model {
 	return m
 }
 
+// WithAllProjects returns m entered into all-projects mode. Used by main.go
+// to restore a persisted all-projects scope on launch.
+func (m Model) WithAllProjects() Model {
+	m.enterAllProjects()
+	return m
+}
+
 // SessionProject is the single-project scope the user was in at quit,
 // regardless of whether they were in all-projects view at the moment.
 func (m Model) SessionProject() string {
@@ -162,6 +169,11 @@ func (m Model) SessionProject() string {
 // persistence. Returns "" when the filter has no canonical name.
 func (m Model) SessionFilter() string {
 	return m.filter.Name()
+}
+
+// SessionAllProjects reports whether the user is in all-projects view.
+func (m Model) SessionAllProjects() bool {
+	return m.allProjects
 }
 
 func (m Model) Init() tea.Cmd { return nil }

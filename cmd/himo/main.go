@@ -130,6 +130,9 @@ func openTUI(cfg *config.Config, project string, st *state.State) {
 	if st.LastFilter != "" {
 		m = m.WithFilter(tui.FilterFromName(st.LastFilter))
 	}
+	if st.LastAllProjects {
+		m = m.WithAllProjects()
+	}
 	final, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "himo:", err)
@@ -142,6 +145,7 @@ func openTUI(cfg *config.Config, project string, st *state.State) {
 		if f := fm.SessionFilter(); f != "" {
 			st.LastFilter = f
 		}
+		st.LastAllProjects = fm.SessionAllProjects()
 		if err := state.Save(st); err != nil {
 			fmt.Fprintln(os.Stderr, "himo: save state:", err)
 		}
