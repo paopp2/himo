@@ -77,6 +77,49 @@ func renderView(m Model) string {
 	if width <= 0 {
 		width = 80
 	}
+	height := m.height
+	if height < 10 {
+		height = 10
+	}
+
+	locs := m.visibleTaskLocations()
+	tasks := make([]model.Task, len(locs))
+	for i, loc := range locs {
+		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
+	}
+
+	// Modal overlays (prompt / delete / picker) replace the main view.
+	switch m.currentMode() {
+	case ModePrompt:
+		title := "New task"
+		if m.promptAbove {
+			title = "New task (above)"
+		}
+		return centeredBox(m.styles, modalInput{
+			Title:  title,
+			Body:   "> " + m.promptBuf + "_",
+			Hints:  "Enter create   Esc cancel",
+			Width:  width,
+			Height: height,
+		})
+	case ModeDelete:
+		return centeredBox(m.styles, modalInput{
+			Title:  "Delete task?",
+			Body:   deleteTitle(m, tasks),
+			Hints:  "y delete   n cancel",
+			Width:  width,
+			Height: height,
+			Error:  true,
+		})
+	case ModePicker:
+		return centeredBox(m.styles, modalInput{
+			Title:  "Switch project",
+			Body:   renderPickerBody(m),
+			Hints:  "up/down move   Enter switch   Esc cancel",
+			Width:  width,
+			Height: height,
+		})
+	}
 
 	top := renderTopBar(m.styles, topBarInput{
 		Projects: m.projects,
@@ -86,11 +129,6 @@ func renderView(m Model) string {
 	})
 	fbar := renderFilterBar(m.styles, m.filter, m.statusCounts(), width)
 
-	locs := m.visibleTaskLocations()
-	tasks := make([]model.Task, len(locs))
-	for i, loc := range locs {
-		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
-	}
 	var body string
 	if width < 100 || m.hidePreview {
 		body = renderListPane(m, locs, tasks, width, m.height-4, true)
@@ -120,13 +158,7 @@ func renderView(m Model) string {
 		DeleteTitle: deleteTitle(m, tasks),
 		Banner:      m.banner,
 	})
-	view := top + "\n" + fbar + "\n\n" + body + "\n" + hint
-
-	// Picker stays inline until Task 6.2 folds it into a modal.
-	if m.pickerOpen {
-		view += "\n" + renderPicker(m)
-	}
-	return view
+	return top + "\n" + fbar + "\n\n" + body + "\n" + hint
 }
 
 func deleteTitle(m Model, tasks []model.Task) string {
@@ -212,13 +244,14 @@ func renderTaskLine(st *Styles, t model.Task, o renderTaskOpts) string {
 	return row
 }
 
-func renderPicker(m Model) string {
+func renderPickerBody(m Model) string {
 	var b strings.Builder
-	b.WriteString("[picker] filter: " + m.pickerFilter + "_\n")
+	b.WriteString("/ " + m.pickerFilter + "_\n")
+	b.WriteString(strings.Repeat("─", 30) + "\n")
 	for i, n := range m.filteredProjects() {
 		prefix := "  "
 		if i == m.pickerCursor {
-			prefix = "> "
+			prefix = m.styles.Accent.Render("◆ ")
 		}
 		b.WriteString(prefix + n + "\n")
 	}
