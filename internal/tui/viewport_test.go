@@ -47,7 +47,7 @@ func TestList_cursorStaysVisible(t *testing.T) {
 		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
 	}
 	paneHeight := 8
-	pane := renderListPane(m, locs, tasks, 80, paneHeight, true)
+	pane := renderListPane(m, locs, tasks, 80, paneHeight)
 
 	// With proper slicing, the pane's line count should be bounded by the
 	// pane height plus a small border allowance. Without slicing, all 40

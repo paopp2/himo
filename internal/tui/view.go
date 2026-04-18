@@ -10,6 +10,15 @@ import (
 	"github.com/npaolopepito/himo/internal/store"
 )
 
+const (
+	narrowThreshold    = 80  // below this, top/filter bars collapse.
+	previewThreshold   = 100 // below this, the preview pane hides.
+	previewGutter      = 3   // cells between list pane and preview pane.
+	bodyVerticalChrome = 4   // top bar + filter bar + blank + hint bar rows.
+	defaultWidth       = 80
+	defaultHeight      = 10
+)
+
 func renderHelp(st *Styles, width int) string {
 	col := func(heading string, rows [][2]string) string {
 		var b strings.Builder
@@ -65,21 +74,18 @@ func renderHelp(st *Styles, width int) string {
 }
 
 func renderView(m Model) string {
+	width := m.width
+	if width <= 0 {
+		width = defaultWidth
+	}
 	if m.showingHelp {
-		width := m.width
-		if width <= 0 {
-			width = 80
-		}
 		return renderHelp(m.styles, width) + "\n" +
 			renderHintBar(m.styles, hintInput{Mode: ModeHelp, Width: width})
 	}
-	width := m.width
-	if width <= 0 {
-		width = 80
-	}
-	height := m.height
-	if height < 10 {
-		height = 10
+
+	modalHeight := m.height
+	if modalHeight < defaultHeight {
+		modalHeight = defaultHeight
 	}
 
 	locs := m.visibleTaskLocations()
@@ -88,7 +94,6 @@ func renderView(m Model) string {
 		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
 	}
 
-	// Modal overlays (prompt / delete / picker) replace the main view.
 	switch m.currentMode() {
 	case ModePrompt:
 		title := "New task"
@@ -100,7 +105,7 @@ func renderView(m Model) string {
 			Body:   "> " + m.promptBuf + "_",
 			Hints:  "Enter create   Esc cancel",
 			Width:  width,
-			Height: height,
+			Height: modalHeight,
 		})
 	case ModeDelete:
 		return centeredBox(m.styles, modalInput{
@@ -108,7 +113,7 @@ func renderView(m Model) string {
 			Body:   deleteTitle(m, tasks),
 			Hints:  "y delete   n cancel",
 			Width:  width,
-			Height: height,
+			Height: modalHeight,
 			Error:  true,
 		})
 	case ModePicker:
@@ -117,7 +122,7 @@ func renderView(m Model) string {
 			Body:   renderPickerBody(m),
 			Hints:  "up/down move   Enter switch   Esc cancel",
 			Width:  width,
-			Height: height,
+			Height: modalHeight,
 		})
 	}
 
@@ -129,21 +134,22 @@ func renderView(m Model) string {
 	})
 	fbar := renderFilterBar(m.styles, m.filter, m.statusCounts(), width)
 
+	paneHeight := m.height - bodyVerticalChrome
 	var body string
-	if width < 100 || m.hidePreview {
-		body = renderListPane(m, locs, tasks, width, m.height-4, true)
+	if width < previewThreshold || m.hidePreview {
+		body = renderListPane(m, locs, tasks, width, paneHeight)
 	} else {
 		listW := width * 60 / 100
-		previewW := width - listW - 3
+		previewW := width - listW - previewGutter
 		var previewTask *model.Task
 		if len(tasks) > 0 && m.cursor < len(tasks) {
 			previewTask = &tasks[m.cursor]
 		}
-		listPane := renderListPane(m, locs, tasks, listW, m.height-4, true)
+		listPane := renderListPane(m, locs, tasks, listW, paneHeight)
 		previewPane := renderPreview(previewInput{
 			Styles: m.styles,
 			Width:  previewW,
-			Height: m.height - 4,
+			Height: paneHeight,
 			Task:   previewTask,
 		})
 		body = lipgloss.JoinHorizontal(lipgloss.Top, listPane, "  ", previewPane)
@@ -179,10 +185,10 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	var b strings.Builder
 	width := m.width
 	if width <= 0 {
-		width = 80
+		width = defaultWidth
 	}
 	for i, t := range tasks {
-		opts := renderTaskOpts{Width: width, Cursor: i == m.cursor}
+		opts := taskLineInput{Width: width, Cursor: i == m.cursor}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
 			opts.ProjectName = locs[i].proj.Name
@@ -193,27 +199,20 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	return b.String()
 }
 
-// renderListPane wraps the visible slice of task rows in a rounded-border
-// box. When the list is taller than the pane, rows scroll so the cursor
-// row is always visible.
-func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height int, focused bool) string {
-	border := m.styles.PaneBorder
-	if focused {
-		border = m.styles.PaneBorderFocused
-	}
+// renderListPane renders a bordered, scrolled window of task rows around
+// m.cursor so the cursor row is always visible.
+func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height int) string {
 	if height < 5 {
 		height = 5
 	}
-
-	// Inner content height is pane height minus border top+bottom.
-	contentH := height - 2
+	contentH := height - 2 // border top + bottom
 	if contentH < 1 {
 		contentH = 1
 	}
 
 	rows := make([]string, len(tasks))
 	for i, t := range tasks {
-		opts := renderTaskOpts{Width: width - 2, Cursor: i == m.cursor}
+		opts := taskLineInput{Width: width - 2, Cursor: i == m.cursor}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
 			opts.ProjectName = locs[i].proj.Name
@@ -221,7 +220,6 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 		rows[i] = renderTaskLine(m.styles, t, opts)
 	}
 
-	// Compute the window so m.cursor is visible.
 	start := 0
 	if len(rows) > contentH {
 		start = m.cursor - contentH/2
@@ -238,24 +236,25 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	}
 
 	visible := strings.Join(rows[start:end], "\n")
-	return border.Width(width).Height(height).Render(visible)
+	return m.styles.PaneBorderFocused.Width(width).Height(height).Render(visible)
 }
 
-type renderTaskOpts struct {
+type taskLineInput struct {
 	Width       int
 	Cursor      bool
 	AllProjects bool
 	ProjectName string
 }
 
-// renderTaskLine returns a single styled row for t.
-// Layout: "▌ ● [work] Buy groceries                 •"
-// - leftmost col: cursor bar or space
-// - glyph
-// - optional [project] chip
-// - title (styled per status)
-// - right-aligned notes dot or space
-func renderTaskLine(st *Styles, t model.Task, o renderTaskOpts) string {
+// renderTaskLine returns a single styled row:
+//
+//	▌ ● [work] Buy groceries                 •
+//	^  ^ ^     ^                              ^
+//	|  | |     title                          notes dot
+//	|  | project chip
+//	|  glyph
+//	cursor bar
+func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	bar := " "
 	if o.Cursor {
 		bar = st.CursorBar.Render("▌")
@@ -273,7 +272,6 @@ func renderTaskLine(st *Styles, t model.Task, o renderTaskOpts) string {
 		dot = st.Muted.Render("•")
 	}
 
-	// Build the row with fixed slots: bar + glyph + title, right-align dot.
 	left := bar + " " + glyph + " " + title
 	padding := o.Width - lipgloss.Width(left) - 2
 	if padding < 1 {
@@ -289,8 +287,7 @@ func renderTaskLine(st *Styles, t model.Task, o renderTaskOpts) string {
 
 func renderPickerBody(m Model) string {
 	var b strings.Builder
-	b.WriteString("/ " + m.pickerFilter + "_\n")
-	b.WriteString(strings.Repeat("─", 30) + "\n")
+	b.WriteString("/ " + m.pickerFilter + "_\n\n")
 	for i, n := range m.filteredProjects() {
 		prefix := "  "
 		if i == m.pickerCursor {
@@ -302,18 +299,13 @@ func renderPickerBody(m Model) string {
 }
 
 type previewInput struct {
-	Styles  *Styles
-	Width   int
-	Height  int
-	Task    *model.Task
-	Focused bool
+	Styles *Styles
+	Width  int
+	Height int
+	Task   *model.Task
 }
 
 func renderPreview(in previewInput) string {
-	border := in.Styles.PaneBorder
-	if in.Focused {
-		border = in.Styles.PaneBorderFocused
-	}
 	width := in.Width
 	if width < 20 {
 		width = 20
@@ -339,6 +331,10 @@ func renderPreview(in previewInput) string {
 		glyph := in.Styles.GlyphStyle(in.Task.Status).Render(in.Styles.StatusGlyph(in.Task.Status))
 		header = "Notes  " + glyph + " " + in.Task.Title
 		raw := stripNotesIndent(in.Task.Notes)
+		// Glamour errors fall back to the raw indented notes. Acceptable:
+		// a malformed renderer config or transient resource issue would
+		// still show the notes, just unstyled. Surfacing via m.banner would
+		// require threading state through render, which view funcs avoid.
 		r, err := newNotesRenderer(width - 4)
 		if err == nil {
 			rendered, rerr := r.Render(raw)
@@ -352,7 +348,7 @@ func renderPreview(in previewInput) string {
 	}
 
 	content := header + "\n\n" + body
-	return border.Width(width).Height(height).Render(content)
+	return in.Styles.PaneBorderFocused.Width(width).Height(height).Render(content)
 }
 
 func stripNotesIndent(notes string) string {
@@ -361,17 +357,6 @@ func stripNotesIndent(notes string) string {
 		lines[i] = strings.TrimPrefix(ln, "    ")
 	}
 	return strings.Join(lines, "\n")
-}
-
-func filterLabel(f Filter) string {
-	if f.All {
-		return "all"
-	}
-	parts := make([]string, 0, len(f.Statuses))
-	for _, s := range f.Statuses {
-		parts = append(parts, s.String())
-	}
-	return strings.Join(parts, "+")
 }
 
 func minInt(a, b int) int {

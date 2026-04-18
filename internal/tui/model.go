@@ -403,6 +403,25 @@ func (m Model) visibleTasks() []model.Task {
 	return out
 }
 
+// statusCounts returns the per-status totals across the current scope.
+// Search does not narrow counts; only filters narrow what the list shows.
+func (m Model) statusCounts() map[model.Status]int {
+	out := make(map[model.Status]int, 6)
+	add := func(p *store.Project) {
+		for _, t := range p.AllTasks() {
+			out[t.Status]++
+		}
+	}
+	if m.allProjects {
+		for _, p := range m.allProjectsCache {
+			add(p)
+		}
+	} else {
+		add(m.project)
+	}
+	return out
+}
+
 // currentTaskItem returns the cursor's task location, or ok=false if out of range.
 func (m Model) currentTaskItem() (*store.Project, *store.Document, int, bool) {
 	locs := m.visibleTaskLocations()

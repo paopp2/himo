@@ -20,10 +20,11 @@ type TaskItem struct {
 
 func (TaskItem) isItem() {}
 
-// DateHeading is a "# YYYY-MM-DD" line (done.md only).
+// DateHeading is a "## YYYY-MM-DD" section break (done.md only). The
+// parser accepts both "#" and "##" for back-compat; Render canonicalizes
+// to "##".
 type DateHeading struct {
-	Date    string
-	RawLine string
+	Date string
 }
 
 func (DateHeading) isItem() {}

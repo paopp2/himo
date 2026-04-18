@@ -8,11 +8,10 @@ import (
 	"github.com/npaolopepito/himo/internal/model"
 )
 
-// renderFilterBar draws the filter chips with live counts. Active chips
-// (in f.Statuses or f.All) render with accent; others muted. Returns an
-// empty string below 80 cols so narrow layouts can drop the row entirely.
+// renderFilterBar returns "" below narrowThreshold so narrow layouts drop
+// the row entirely.
 func renderFilterBar(st *Styles, f Filter, counts map[model.Status]int, width int) string {
-	if width < 80 {
+	if width < narrowThreshold {
 		return ""
 	}
 	type chip struct {

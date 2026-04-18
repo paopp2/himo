@@ -13,11 +13,8 @@ type topBarInput struct {
 	AllMode  bool
 }
 
-// renderTopBar draws the top context strip: project tabs on the left,
-// scope shortcuts on the right. Active tab (or "all projects" chip) uses
-// the accent style.
 func renderTopBar(st *Styles, in topBarInput) string {
-	if in.Width < 80 {
+	if in.Width < narrowThreshold {
 		name := in.Current
 		if in.AllMode {
 			name = "all"

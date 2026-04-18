@@ -41,7 +41,7 @@ func TestRoundTrip(t *testing.T) {
 
 func TestRender_dateHeadingsUseH2(t *testing.T) {
 	doc := &Document{Items: []Item{
-		DateHeading{Date: "2026-04-18", RawLine: "# 2026-04-18"},
+		DateHeading{Date: "2026-04-18"},
 		TaskItem{
 			Task:     model.Task{Status: model.StatusDone, Title: "A"},
 			RawLines: []string{"- [x] A"},

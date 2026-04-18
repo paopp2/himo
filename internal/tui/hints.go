@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Mode is the current interaction mode. Drives the hint bar + help.
 type Mode int
 
 const (
@@ -19,22 +18,20 @@ const (
 	ModeHelp
 )
 
+var modeNames = [...]string{
+	ModeNormal: "NORMAL",
+	ModeSearch: "SEARCH",
+	ModePrompt: "PROMPT",
+	ModeDelete: "DELETE?",
+	ModePicker: "PICKER",
+	ModeHelp:   "HELP",
+}
+
 func (m Mode) String() string {
-	switch m {
-	case ModeNormal:
-		return "NORMAL"
-	case ModeSearch:
-		return "SEARCH"
-	case ModePrompt:
-		return "PROMPT"
-	case ModeDelete:
-		return "DELETE?"
-	case ModePicker:
-		return "PICKER"
-	case ModeHelp:
-		return "HELP"
+	if int(m) < 0 || int(m) >= len(modeNames) {
+		panic(fmt.Sprintf("tui: unknown Mode %d", m))
 	}
-	return "?"
+	return modeNames[m]
 }
 
 type hintInput struct {
@@ -54,7 +51,7 @@ func renderHintBar(st *Styles, in hintInput) string {
 
 	width := in.Width
 	if width <= 0 {
-		width = 80
+		width = defaultWidth
 	}
 	pad := width - lipgloss.Width(pill) - lipgloss.Width(mid) - lipgloss.Width(meta) - 4
 	if pad < 1 {

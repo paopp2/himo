@@ -231,7 +231,7 @@ func ParseDone(b []byte) (*Document, error) {
 
 func parseDoneLine(line string) (Item, bool) {
 	if m := dateHeadingRe.FindStringSubmatch(line); m != nil {
-		return DateHeading{Date: m[1], RawLine: line}, true
+		return DateHeading{Date: m[1]}, true
 	}
 	return parseActiveLine(line)
 }
