@@ -63,6 +63,8 @@ func renderHelp(st *Styles, width int) string {
 		{"!/x/-", "blocked / done / cancelled"},
 		{"o/O", "new below / above"},
 		{"d", "delete"},
+		{"u", "undo"},
+		{"Ctrl+R", "redo"},
 		{"v", "toggle preview"},
 		{"?", "toggle this help"},
 	})

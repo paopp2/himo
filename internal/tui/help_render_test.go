@@ -13,6 +13,7 @@ func TestRenderHelp_threeColumns(t *testing.T) {
 		"j", "Enter", "Space",
 		"0", "1", "2", "3", "4", "5", "6",
 		"o", "O", "d", "!", "x", "-",
+		"u", "Ctrl+R",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("help missing %q in:\n%s", want, out)
