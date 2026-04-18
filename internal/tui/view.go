@@ -102,18 +102,6 @@ func renderView(m Model) string {
 	}
 
 	switch m.currentMode() {
-	case ModePrompt:
-		title := "New task"
-		if m.promptAbove {
-			title = "New task (above)"
-		}
-		return centeredBox(m.styles, modalInput{
-			Title:  title,
-			Body:   "> " + m.promptBuf + "_",
-			Hints:  "Enter create   Esc cancel",
-			Width:  width,
-			Height: modalHeight,
-		})
 	case ModeDelete:
 		return centeredBox(m.styles, modalInput{
 			Title:  "Delete task?",
@@ -207,7 +195,9 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 }
 
 // renderListPane renders a bordered, scrolled window of task rows around
-// m.cursor so the cursor row is always visible.
+// the cursor. When the user is prompting for a new task, a ghost row is
+// spliced in at the insertion position (above the cursor for O, at the
+// end of the list for o) and stays visible while the buffer is edited.
 func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height int) string {
 	if height < 5 {
 		height = 5
@@ -219,7 +209,7 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 
 	rows := make([]string, len(tasks))
 	for i, t := range tasks {
-		opts := taskLineInput{Width: width - 2, Cursor: i == m.cursor}
+		opts := taskLineInput{Width: width - 2, Cursor: i == m.cursor && !m.prompting}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
 			opts.ProjectName = locs[i].proj.Name
@@ -227,9 +217,23 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 		rows[i] = renderTaskLine(m.styles, t, opts)
 	}
 
+	cursorRow := m.cursor
+	if m.prompting {
+		ghostIdx := len(rows)
+		if m.promptAbove {
+			ghostIdx = m.cursor
+			if ghostIdx > len(rows) {
+				ghostIdx = len(rows)
+			}
+		}
+		ghost := renderGhostRow(m.styles, m.promptBuf, width-2)
+		rows = append(rows[:ghostIdx], append([]string{ghost}, rows[ghostIdx:]...)...)
+		cursorRow = ghostIdx
+	}
+
 	start := 0
 	if len(rows) > contentH {
-		start = m.cursor - contentH/2
+		start = cursorRow - contentH/2
 		if start < 0 {
 			start = 0
 		}
@@ -244,6 +248,19 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 
 	visible := strings.Join(rows[start:end], "\n")
 	return m.styles.PaneBorderFocused.Width(width).Height(height).Render(visible)
+}
+
+func renderGhostRow(st *Styles, buf string, width int) string {
+	bar := st.CursorBar.Render("▌")
+	marker := st.Accent.Render("+")
+	body := buf + "_"
+	left := bar + " " + marker + " " + body
+	padding := width - lipgloss.Width(left)
+	if padding < 0 {
+		padding = 0
+	}
+	row := left + strings.Repeat(" ", padding)
+	return st.CursorRowBG.Render(row)
 }
 
 type taskLineInput struct {
