@@ -141,3 +141,39 @@ func TestRedo_afterStatusUndo(t *testing.T) {
 		t.Errorf("after redo: banner = %q, want \"redone\"", um.banner)
 	}
 }
+
+// After u, making a new mutation must discard the redo stack: Ctrl-R becomes
+// a no-op (banner empty, no status flip on a fresh task).
+func TestRedo_clearedByNewMutation(t *testing.T) {
+	m := NewModel(testProject(t))
+	tasks := m.visibleTasks()
+	if len(tasks) < 2 {
+		t.Fatal("need >= 2 visible tasks")
+	}
+
+	// x on task 0, u to revert, j to move to task 1, x on task 1 (new mutation).
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+
+	before := map[string]model.Status{}
+	for _, task := range cur.(Model).project.AllTasks() {
+		before[task.Title] = task.Status
+	}
+
+	// Ctrl-R should now do nothing.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	after := map[string]model.Status{}
+	for _, task := range cur.(Model).project.AllTasks() {
+		after[task.Title] = task.Status
+	}
+	for title, s := range before {
+		if after[title] != s {
+			t.Errorf("Ctrl-R after new mutation changed %q: %v -> %v", title, s, after[title])
+		}
+	}
+	if len(cur.(Model).redoStack) != 0 {
+		t.Errorf("redoStack len = %d after new mutation, want 0", len(cur.(Model).redoStack))
+	}
+}
