@@ -21,7 +21,7 @@ func twoProjectBase(t *testing.T) string {
 
 func TestScope_tabSwitchesProject(t *testing.T) {
 	base := twoProjectBase(t)
-	m, err := NewModelFromBase(base, "work")
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestScope_tabSwitchesProject(t *testing.T) {
 // inserts the new task into the cursor's owning project rather than m.project.
 func TestAllProjects_insertTargetsCursorProject(t *testing.T) {
 	base := twoProjectBase(t)
-	m, err := NewModelFromBase(base, "work")
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

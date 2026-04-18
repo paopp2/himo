@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 
+	"github.com/npaolopepito/himo/internal/model"
 	"github.com/npaolopepito/himo/internal/store"
 )
 
@@ -42,4 +43,21 @@ func TestView_showsTasks(t *testing.T) {
 	}, teatest.WithDuration(time.Second))
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	tm.WaitFinished(t)
+}
+
+func TestNewModel_hasStyles(t *testing.T) {
+	m := NewModel(testProject(t))
+	if m.styles == nil {
+		t.Fatal("m.styles is nil")
+	}
+	if got := m.styles.StatusGlyph(model.StatusActive); got != "●" {
+		t.Errorf("default glyph for active = %q, want ●", got)
+	}
+}
+
+func TestNewModel_asciiGlyphsOption(t *testing.T) {
+	m := NewModelWithOptions(testProject(t), StyleOptions{AsciiGlyphs: true})
+	if got := m.styles.StatusGlyph(model.StatusActive); got != "*" {
+		t.Errorf("ascii glyph for active = %q, want *", got)
+	}
 }

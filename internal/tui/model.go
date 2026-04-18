@@ -67,16 +67,22 @@ type Model struct {
 	allProjects       bool
 	allProjectsCache  []*store.Project
 	editingProjectDir string
+	styles            *Styles
 }
 
 // NewModel builds a fresh Model for the given project.
 func NewModel(p *store.Project) Model {
-	return Model{project: p, filter: DefaultFilter()}
+	return NewModelWithOptions(p, StyleOptions{})
+}
+
+// NewModelWithOptions is like NewModel but takes style options.
+func NewModelWithOptions(p *store.Project, opts StyleOptions) Model {
+	return Model{project: p, filter: DefaultFilter(), styles: NewStyles(opts)}
 }
 
 // NewModelFromBase loads the named project from baseDir and returns a Model
 // seeded with the list of sibling projects for Tab cycling.
-func NewModelFromBase(baseDir, name string) (Model, error) {
+func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 	p, err := store.LoadProject(filepath.Join(baseDir, name))
 	if err != nil {
 		return Model{}, err
@@ -90,6 +96,7 @@ func NewModelFromBase(baseDir, name string) (Model, error) {
 		filter:   DefaultFilter(),
 		baseDir:  baseDir,
 		projects: projects,
+		styles:   NewStyles(opts),
 	}, nil
 }
 

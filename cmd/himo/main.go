@@ -88,7 +88,7 @@ func main() {
 		if err != nil {
 			os.Exit(1)
 		}
-		openTUI(cfg.BaseDir, os.Args[1])
+		openTUI(cfg, os.Args[1])
 	}
 }
 
@@ -110,11 +110,14 @@ func openTUIWithConfig() {
 		}
 		name = names[0]
 	}
-	openTUI(cfg.BaseDir, name)
+	openTUI(cfg, name)
 }
 
-func openTUI(baseDir, project string) {
-	m, err := tui.NewModelFromBase(baseDir, project)
+func openTUI(cfg *config.Config, project string) {
+	m, err := tui.NewModelFromBase(cfg.BaseDir, project, tui.StyleOptions{
+		AsciiGlyphs: cfg.AsciiGlyphs,
+		NoColor:     cfg.NoColor,
+	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "himo:", err)
 		os.Exit(1)

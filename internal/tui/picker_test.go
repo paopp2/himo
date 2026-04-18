@@ -8,7 +8,7 @@ import (
 
 func TestPicker_filterMatches(t *testing.T) {
 	base := twoProjectBase(t)
-	m, err := NewModelFromBase(base, "work")
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestPicker_filterMatches(t *testing.T) {
 
 func TestPicker_escClosesWithoutSwitch(t *testing.T) {
 	base := twoProjectBase(t)
-	m, err := NewModelFromBase(base, "work")
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestPicker_escClosesWithoutSwitch(t *testing.T) {
 
 func TestAllProjects_aggregates(t *testing.T) {
 	base := twoProjectBase(t)
-	m, err := NewModelFromBase(base, "work")
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
