@@ -93,69 +93,43 @@ func applyEntry(proj *store.Project, entry historyEntry) {
 	proj.Done.Items = entry.done
 }
 
-// undo pops the top undo entry, snapshots current state to redoStack, applies
-// the entry, saves, and restores the cursor. On save failure the in-memory
-// state is reverted and the entry stays on the undo stack. On a
-// project-not-loaded miss, the entry also stays on the stack.
-func (m *Model) undo() {
-	if len(m.undoStack) == 0 {
+// clampCursor keeps m.cursor inside the current visible list.
+func (m *Model) clampCursor() {
+	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
+		m.cursor = n - 1
+	}
+}
+
+// applyHistory moves the top entry from 'from' to 'to', applying it to the
+// referenced project and restoring the cursor. op is the banner verb used
+// on errors (e.g. "undo"); okBanner is the success banner. Used by undo
+// and redo, which differ only by which stack they pop from.
+func (m *Model) applyHistory(from, to *[]historyEntry, op, okBanner string) {
+	if len(*from) == 0 {
 		return
 	}
-	entry := m.undoStack[len(m.undoStack)-1]
+	entry := (*from)[len(*from)-1]
 	proj := m.projectByDir(entry.projectDir)
 	if proj == nil {
-		m.banner = "undo: project not loaded"
+		m.banner = op + ": project not loaded"
 		return
 	}
 
 	current := snapshotOf(proj, m.cursor)
 	applyEntry(proj, entry)
-	if err := m.saveWithBanner(proj, "undo"); err != nil {
+	if err := m.saveWithBanner(proj, op); err != nil {
 		applyEntry(proj, current)
 		return
 	}
-	m.undoStack = m.undoStack[:len(m.undoStack)-1]
-	m.redoStack = append(m.redoStack, current)
-	if len(m.redoStack) > historyLimit {
-		m.redoStack = m.redoStack[len(m.redoStack)-historyLimit:]
+	*from = (*from)[:len(*from)-1]
+	*to = append(*to, current)
+	if len(*to) > historyLimit {
+		*to = (*to)[len(*to)-historyLimit:]
 	}
 	m.cursor = entry.cursor
-	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
-		m.cursor = n - 1
-	}
-	m.banner = "undone"
+	m.clampCursor()
+	m.banner = okBanner
 }
 
-// redo pops the top redo entry, snapshots current state onto undoStack,
-// applies the entry, saves, and restores the cursor. Symmetrical to undo.
-// The redo stack is NOT cleared here; only pushUndo (a new mutation) clears
-// it. redo must NOT go through pushUndo, because pushUndo would clear the
-// redoStack.
-func (m *Model) redo() {
-	if len(m.redoStack) == 0 {
-		return
-	}
-	entry := m.redoStack[len(m.redoStack)-1]
-	proj := m.projectByDir(entry.projectDir)
-	if proj == nil {
-		m.banner = "redo: project not loaded"
-		return
-	}
-
-	current := snapshotOf(proj, m.cursor)
-	applyEntry(proj, entry)
-	if err := m.saveWithBanner(proj, "redo"); err != nil {
-		applyEntry(proj, current)
-		return
-	}
-	m.redoStack = m.redoStack[:len(m.redoStack)-1]
-	m.undoStack = append(m.undoStack, current)
-	if len(m.undoStack) > historyLimit {
-		m.undoStack = m.undoStack[len(m.undoStack)-historyLimit:]
-	}
-	m.cursor = entry.cursor
-	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
-		m.cursor = n - 1
-	}
-	m.banner = "redone"
-}
+func (m *Model) undo() { m.applyHistory(&m.undoStack, &m.redoStack, "undo", "undone") }
+func (m *Model) redo() { m.applyHistory(&m.redoStack, &m.undoStack, "redo", "redone") }

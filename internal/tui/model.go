@@ -539,9 +539,7 @@ func (m *Model) setStatus(s model.Status) {
 		return
 	}
 	m.commitUndo()
-	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
-		m.cursor = n - 1
-	}
+	m.clampCursor()
 }
 
 // saveWithBanner persists proj. Returns nil on success, the original error on
