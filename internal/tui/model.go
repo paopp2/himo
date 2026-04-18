@@ -109,6 +109,8 @@ type Model struct {
 	allProjects       bool
 	allProjectsCache  []*store.Project
 	editingProjectDir string
+	undoStack         []historyEntry
+	redoStack         []historyEntry
 	styles            *Styles
 }
 
@@ -339,6 +341,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "v":
 			m.hidePreview = !m.hidePreview
+		case "u":
+			m.undo()
+		case "ctrl+r":
+			m.redo()
 		case " ":
 			m.cycleStatus()
 		case "o":
@@ -514,6 +520,7 @@ func (m *Model) setStatus(s model.Status) {
 	if !ok {
 		return
 	}
+	m.pushUndo(proj)
 	old := doc.Items[idx].(store.TaskItem)
 	ti := old
 	ti.Task.Status = s
@@ -522,9 +529,11 @@ func (m *Model) setStatus(s model.Status) {
 	if err := store.Normalize(proj, today()); err != nil {
 		doc.Items[idx] = old
 		m.banner = "normalize: " + err.Error()
+		m.popUndo()
 		return
 	}
 	if err := m.saveWithBanner(proj, "save"); err != nil {
+		m.popUndo()
 		return
 	}
 	if n := len(m.visibleTasks()); m.cursor >= n && n > 0 {
