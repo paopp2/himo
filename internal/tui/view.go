@@ -158,7 +158,14 @@ func renderView(m Model) string {
 		DeleteTitle: deleteTitle(m, tasks),
 		Banner:      m.banner,
 	})
-	return top + "\n" + fbar + "\n\n" + body + "\n" + hint
+	view := top + "\n"
+	if fbar != "" {
+		view += fbar + "\n\n"
+	} else {
+		view += "\n"
+	}
+	view += body + "\n" + hint
+	return view
 }
 
 func deleteTitle(m Model, tasks []model.Task) string {

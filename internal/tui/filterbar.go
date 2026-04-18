@@ -7,11 +7,13 @@ import (
 	"github.com/npaolopepito/himo/internal/model"
 )
 
-// renderFilterBar draws the always-visible filter chips with live counts.
-// Active chips (in f.Statuses or f.All) render with accent; others muted.
-// The width parameter is reserved for a future compact form (Task 7.2).
+// renderFilterBar draws the filter chips with live counts. Active chips
+// (in f.Statuses or f.All) render with accent; others muted. Returns an
+// empty string below 80 cols so narrow layouts can drop the row entirely.
 func renderFilterBar(st *Styles, f Filter, counts map[model.Status]int, width int) string {
-	_ = width
+	if width < 80 {
+		return ""
+	}
 	type chip struct {
 		key   string
 		label string

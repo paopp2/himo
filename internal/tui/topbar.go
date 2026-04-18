@@ -17,6 +17,13 @@ type topBarInput struct {
 // scope shortcuts on the right. Active tab (or "all projects" chip) uses
 // the accent style.
 func renderTopBar(st *Styles, in topBarInput) string {
+	if in.Width < 80 {
+		name := in.Current
+		if in.AllMode {
+			name = "all"
+		}
+		return st.Muted.Render("himo · " + name)
+	}
 	var left string
 	if in.AllMode {
 		left = st.Accent.Render("◆ all projects")

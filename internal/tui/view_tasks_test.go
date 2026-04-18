@@ -61,6 +61,22 @@ func TestRenderTaskLine_allProjectsChip(t *testing.T) {
 	}
 }
 
+func TestView_narrowLayoutCollapses(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.width, m.height = 60, 20
+	m.styles = testStyles(t)
+	out := renderView(m)
+
+	// Filter bar keys (0-6 chips) disappear below 80 cols.
+	if strings.Contains(out, "[0] All") && strings.Contains(out, "[6] Cancelled") {
+		t.Errorf("filter bar still fully rendered at 60 cols:\n%s", out)
+	}
+	// Top bar collapses: scope shortcuts should be absent.
+	if strings.Contains(out, "[A] all") || strings.Contains(out, "[P] picker") {
+		t.Errorf("top bar still showing scope shortcuts at 60 cols:\n%s", out)
+	}
+}
+
 func TestRenderList_usesStyledRows(t *testing.T) {
 	m := NewModel(testProject(t))
 	m.width = 120
