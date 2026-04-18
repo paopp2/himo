@@ -40,7 +40,7 @@ func Load(path string) (*Config, error) {
 	if _, err := toml.DecodeFile(path, cfg); err != nil {
 		return nil, err
 	}
-	if v := os.Getenv("JOT_DIR"); v != "" {
+	if v := os.Getenv("HIMO_DIR"); v != "" {
 		cfg.BaseDir = v
 	}
 	if v := os.Getenv("EDITOR"); v != "" && cfg.Editor == "" {

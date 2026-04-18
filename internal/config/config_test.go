@@ -39,14 +39,14 @@ func TestLoad_envOverride(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
 	os.WriteFile(path, []byte(`base_dir = "~/todos"`), 0o644)
-	t.Setenv("JOT_DIR", "/tmp/other")
+	t.Setenv("HIMO_DIR", "/tmp/other")
 
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
 	if cfg.BaseDir != "/tmp/other" {
-		t.Errorf("BaseDir = %q, want /tmp/other (JOT_DIR override)", cfg.BaseDir)
+		t.Errorf("BaseDir = %q, want /tmp/other (HIMO_DIR override)", cfg.BaseDir)
 	}
 }
 

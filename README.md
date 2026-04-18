@@ -88,7 +88,7 @@ default_project = "work"   # optional
 preview_pane = true        # optional
 ```
 
-`JOT_DIR` env var overrides `base_dir`. `$EDITOR` overrides `editor`.
+`HIMO_DIR` env var overrides `base_dir`. `$EDITOR` overrides `editor`.
 
 ## CLI
 
