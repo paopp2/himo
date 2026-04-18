@@ -153,7 +153,7 @@ func insertDone(doc *Document, incoming []TaskItem, today string) *Document {
 	}
 	// Else prepend a new heading and the tasks.
 	out := &Document{Items: make([]Item, 0, len(doc.Items)+len(stamped)+2)}
-	out.Items = append(out.Items, DateHeading{Date: today, RawLine: "# " + today})
+	out.Items = append(out.Items, DateHeading{Date: today, RawLine: "## " + today})
 	out.Items = append(out.Items, stamped...)
 	if len(doc.Items) > 0 {
 		out.Items = append(out.Items, OpaqueLines{Lines: []string{""}}) // blank separator

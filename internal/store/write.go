@@ -27,7 +27,7 @@ func Render(doc *Document) []byte {
 				buf.WriteByte('\n')
 			}
 		case DateHeading:
-			buf.WriteString(it.RawLine)
+			buf.WriteString("## " + it.Date)
 			buf.WriteByte('\n')
 		case OpaqueLines:
 			for _, line := range it.Lines {

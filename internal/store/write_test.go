@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/npaolopepito/himo/internal/model"
 )
 
 func TestRoundTrip(t *testing.T) {
@@ -33,5 +36,19 @@ func TestRoundTrip(t *testing.T) {
 				t.Errorf("round-trip mismatch for %s:\ngot:\n%s\nwant:\n%s", tc.file, got, orig)
 			}
 		})
+	}
+}
+
+func TestRender_dateHeadingsUseH2(t *testing.T) {
+	doc := &Document{Items: []Item{
+		DateHeading{Date: "2026-04-18", RawLine: "# 2026-04-18"},
+		TaskItem{
+			Task:     model.Task{Status: model.StatusDone, Title: "A"},
+			RawLines: []string{"- [x] A"},
+		},
+	}}
+	got := string(Render(doc))
+	if !strings.HasPrefix(got, "## 2026-04-18") {
+		t.Errorf("expected ## heading at top, got:\n%s", got)
 	}
 }
