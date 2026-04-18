@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -9,45 +10,68 @@ import (
 	"github.com/npaolopepito/himo/internal/store"
 )
 
-const helpText = `Keybindings:
+func renderHelp(st *Styles, width int) string {
+	col := func(heading string, rows [][2]string) string {
+		var b strings.Builder
+		b.WriteString(st.Accent.Render(heading))
+		b.WriteString("\n")
+		for _, r := range rows {
+			b.WriteString(st.Base.Render(fmt.Sprintf("  %-10s  ", r[0])))
+			b.WriteString(st.Muted.Render(r[1]))
+			b.WriteString("\n")
+		}
+		return b.String()
+	}
 
-Navigation
-  j/k        move cursor down/up
-  g/G        top/bottom
-  Ctrl+d/u   half page down/up
-  /          search
-  q          quit
+	nav := col("Navigation", [][2]string{
+		{"j/k", "down / up"},
+		{"g/G", "top / bottom"},
+		{"Ctrl+d/u", "half page"},
+		{"/", "search"},
+		{"Tab", "next project"},
+		{"S-Tab", "prev project"},
+		{"P", "project picker"},
+		{"A", "all projects"},
+		{"q", "quit"},
+	})
+	filters := col("Filters", [][2]string{
+		{"0", "all"},
+		{"1", "backlog"},
+		{"2", "pending"},
+		{"3", "active"},
+		{"4", "blocked"},
+		{"5", "done"},
+		{"6", "cancelled"},
+		{"Esc", "default filter"},
+	})
+	actions := col("Actions", [][2]string{
+		{"Enter", "notes in $EDITOR"},
+		{"e", "edit current file"},
+		{"Space", "cycle status"},
+		{"b/p/a", "backlog / pending / active"},
+		{"!/x/-", "blocked / done / cancelled"},
+		{"o/O", "new below / above"},
+		{"d", "delete"},
+		{"v", "toggle preview"},
+		{"?", "toggle this help"},
+	})
 
-Scope
-  Tab/S-Tab  prev/next project
-  P          project picker
-  A          all-projects view
-
-Filters
-  0          all
-  1          backlog
-  2          pending
-  3          active
-  4          blocked
-  5          done
-  6          cancelled
-  Esc        default (pending+active+blocked)
-
-Actions
-  Enter      open task notes in $EDITOR
-  e          open current-filter file in $EDITOR
-  Space      cycle status forward
-  b/p/a      backlog / pending / active
-  !/x/-      blocked / done / cancelled
-  o/O        new task below / above
-  d          delete (y/n confirm)
-  v          toggle preview pane
-  ?          toggle this help
-`
+	colW := (width - 4) / 3
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.NewStyle().Width(colW).Render(nav),
+		lipgloss.NewStyle().Width(colW).Render(filters),
+		lipgloss.NewStyle().Width(colW).Render(actions),
+	)
+}
 
 func renderView(m Model) string {
 	if m.showingHelp {
-		return helpText
+		width := m.width
+		if width <= 0 {
+			width = 80
+		}
+		return renderHelp(m.styles, width) + "\n" +
+			renderHintBar(m.styles, hintInput{Mode: ModeHelp, Width: width})
 	}
 	width := m.width
 	if width <= 0 {

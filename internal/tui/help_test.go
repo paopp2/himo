@@ -37,8 +37,10 @@ func TestHelp_toggle(t *testing.T) {
 		t.Errorf("after ?: showingHelp = false, want true")
 	}
 	view := renderView(m2.(Model))
-	if !strings.Contains(view, "Keybindings") {
-		t.Errorf("help view missing 'Keybindings' header:\n%s", view)
+	if !strings.Contains(view, "Navigation") ||
+		!strings.Contains(view, "Filters") ||
+		!strings.Contains(view, "Actions") {
+		t.Errorf("help view missing 3-column headings:\n%s", view)
 	}
 	m3, _ := m2.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
 	if m3.(Model).showingHelp {
