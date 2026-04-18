@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -68,22 +67,24 @@ func renderView(m Model) string {
 	for i, loc := range locs {
 		tasks[i] = loc.doc.Items[loc.idx].(store.TaskItem).Task
 	}
-	listStr := renderList(m, locs, tasks)
 	var body string
 	if width < 100 || m.hidePreview {
-		body = listStr
+		body = renderListPane(m, locs, tasks, width, m.height-4, true)
 	} else {
+		listW := width * 60 / 100
+		previewW := width - listW - 3
 		var previewTask *model.Task
 		if len(tasks) > 0 && m.cursor < len(tasks) {
 			previewTask = &tasks[m.cursor]
 		}
-		preview := renderPreview(previewInput{
+		listPane := renderListPane(m, locs, tasks, listW, m.height-4, true)
+		previewPane := renderPreview(previewInput{
 			Styles: m.styles,
-			Width:  width - (width * 60 / 100) - 3,
+			Width:  previewW,
 			Height: m.height - 4,
 			Task:   previewTask,
 		})
-		body = sideBySide(listStr, preview, width)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, listPane, "  ", previewPane)
 	}
 
 	view := top + "\n" + fbar + "\n\n" + body
@@ -124,6 +125,18 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 		b.WriteByte('\n')
 	}
 	return b.String()
+}
+
+// renderListPane wraps renderList in a rounded-border box sized to (width, height).
+func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height int, focused bool) string {
+	border := m.styles.PaneBorder
+	if focused {
+		border = m.styles.PaneBorderFocused
+	}
+	if height < 5 {
+		height = 5
+	}
+	return border.Width(width).Height(height).Render(renderList(m, locs, tasks))
 }
 
 type renderTaskOpts struct {
@@ -245,34 +258,6 @@ func stripNotesIndent(notes string) string {
 		lines[i] = strings.TrimPrefix(ln, "    ")
 	}
 	return strings.Join(lines, "\n")
-}
-
-func sideBySide(left, right string, width int) string {
-	leftW := width * 60 / 100
-	rightW := width - leftW - 3
-	leftLines := strings.Split(left, "\n")
-	rightLines := strings.Split(right, "\n")
-	n := maxInt(len(leftLines), len(rightLines))
-	var b strings.Builder
-	for i := 0; i < n; i++ {
-		var l, r string
-		if i < len(leftLines) {
-			l = leftLines[i]
-		}
-		if i < len(rightLines) {
-			r = rightLines[i]
-		}
-		if len(l) > leftW {
-			l = l[:leftW]
-		} else {
-			l = l + strings.Repeat(" ", leftW-len(l))
-		}
-		if len(r) > rightW {
-			r = r[:rightW]
-		}
-		fmt.Fprintf(&b, "%s | %s\n", l, r)
-	}
-	return b.String()
 }
 
 func filterLabel(f Filter) string {
