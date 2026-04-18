@@ -378,7 +378,15 @@ func renderPreview(in previewInput) string {
 func stripNotesIndent(notes string) string {
 	lines := strings.Split(notes, "\n")
 	for i, ln := range lines {
-		lines[i] = strings.TrimPrefix(ln, "    ")
+		ln = strings.TrimPrefix(ln, "    ")
+		// Markdown treats adjacent non-blank lines as soft-wrapped text in
+		// the same paragraph; our users type each note line expecting it
+		// to render on its own row. Append CommonMark's two-space hard
+		// break so Glamour honors the line break.
+		if strings.TrimSpace(ln) != "" {
+			ln += "  "
+		}
+		lines[i] = ln
 	}
 	return strings.Join(lines, "\n")
 }
