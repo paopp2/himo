@@ -61,6 +61,40 @@ func TestRenderTaskLine_allProjectsChip(t *testing.T) {
 	}
 }
 
+// Regression: nesting a Muted-rendered chip inside a TitleStyle(Done) render
+// triggers lipgloss's char-by-char Strikethrough path, which wraps each inner
+// ESC byte individually and corrupts the stream. The signature is a raw
+// ESC-ESC pair in the output; the visible symptom is literal "[38;2;...m"
+// text with strikethrough drawn through it.
+func TestRenderTaskLine_doneAllProjects_noMangledEscape(t *testing.T) {
+	r := lipgloss.NewRenderer(nil, termenv.WithProfile(termenv.TrueColor))
+	r.SetColorProfile(termenv.TrueColor)
+	st := NewStylesWithRenderer(r, StyleOptions{})
+	line := renderTaskLine(st, model.Task{Status: model.StatusDone, Title: "Do the thing"},
+		taskLineInput{Width: 60, AllProjects: true, ProjectName: "work"})
+
+	if strings.Contains(line, "\x1b\x1b") {
+		t.Errorf("output contains adjacent ESC bytes (inner CSI got char-wrapped): %q", line)
+	}
+	if strings.Contains(line, "[38;2;") {
+		// After a correct render, every "[38;2;" substring must be preceded by an
+		// ESC. A bare "[38;2;" at display time is the user-visible bug.
+		idx := 0
+		for {
+			j := strings.Index(line[idx:], "[38;2;")
+			if j < 0 {
+				break
+			}
+			pos := idx + j
+			if pos == 0 || line[pos-1] != 0x1b {
+				t.Errorf("bare CSI payload (not preceded by ESC) at %d: %q", pos, line)
+				break
+			}
+			idx = pos + 1
+		}
+	}
+}
+
 func TestView_narrowLayoutCollapses(t *testing.T) {
 	m := NewModel(testProject(t))
 	m.width, m.height = 60, 20

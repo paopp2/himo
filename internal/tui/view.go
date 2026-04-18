@@ -306,11 +306,19 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	}
 	glyph := st.GlyphStyle(t.Status).Render(st.StatusGlyph(t.Status))
 
-	title := t.Title
+	// Render chip and title as independent segments. Concatenating a
+	// pre-rendered (ANSI-laden) chip into the title and then re-rendering
+	// with TitleStyle triggers lipgloss's char-by-char Strikethrough path,
+	// which wraps each inner ESC byte individually and mangles the stream.
+	title := st.TitleStyle(t.Status).Render(t.Title)
 	if o.AllProjects && o.ProjectName != "" {
-		title = st.Muted.Render("["+o.ProjectName+"] ") + title
+		chipStyle := st.Muted
+		switch t.Status {
+		case model.StatusDone, model.StatusCancelled:
+			chipStyle = chipStyle.Strikethrough(true)
+		}
+		title = chipStyle.Render("["+o.ProjectName+"] ") + title
 	}
-	title = st.TitleStyle(t.Status).Render(title)
 
 	dot := " "
 	if t.HasNotes() {
