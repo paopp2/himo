@@ -31,6 +31,59 @@ func TestScope_tabSwitchesProject(t *testing.T) {
 	}
 }
 
+func threeProjectBase(t *testing.T) string {
+	t.Helper()
+	base := t.TempDir()
+	for _, name := range []string{"a", "b", "c"} {
+		os.MkdirAll(filepath.Join(base, name), 0o755)
+		os.WriteFile(filepath.Join(base, name, "active.md"),
+			[]byte("- [ ] "+name+" task\n"), 0o644)
+	}
+	return base
+}
+
+// Tab in all-projects mode exits All and advances one project in the cycle.
+func TestScope_tabInAllExitsAndCyclesNext(t *testing.T) {
+	base := threeProjectBase(t)
+	m, err := NewModelFromBase(base, "a", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	if !cur.(Model).allProjects {
+		t.Fatalf("A did not enter all-projects mode")
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyTab})
+	got := cur.(Model)
+	if got.allProjects {
+		t.Errorf("after Tab: allProjects = true, want false")
+	}
+	if got.project.Name != "b" {
+		t.Errorf("after Tab: project = %q, want b", got.project.Name)
+	}
+}
+
+// Shift+Tab in all-projects mode exits All and steps one project backward.
+func TestScope_shiftTabInAllExitsAndCyclesPrev(t *testing.T) {
+	base := threeProjectBase(t)
+	m, err := NewModelFromBase(base, "a", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cur, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	if !cur.(Model).allProjects {
+		t.Fatalf("A did not enter all-projects mode")
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	got := cur.(Model)
+	if got.allProjects {
+		t.Errorf("after Shift+Tab: allProjects = true, want false")
+	}
+	if got.project.Name != "c" {
+		t.Errorf("after Shift+Tab: project = %q, want c", got.project.Name)
+	}
+}
+
 func TestSessionAllProjects_reflectsMode(t *testing.T) {
 	base := twoProjectBase(t)
 	m, err := NewModelFromBase(base, "work", StyleOptions{})

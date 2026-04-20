@@ -323,12 +323,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "tab":
 			if m.allProjects {
-				return m, nil
+				m.exitAllProjects()
 			}
 			m.switchProject(+1)
 		case "shift+tab":
 			if m.allProjects {
-				return m, nil
+				m.exitAllProjects()
 			}
 			m.switchProject(-1)
 		case "P":
