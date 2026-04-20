@@ -15,23 +15,28 @@ func renderFilterBar(st *Styles, f Filter, counts map[model.Status]int, width in
 		return ""
 	}
 	type chip struct {
-		key   string
-		label string
-		st    model.Status
-		isAll bool
+		key       string
+		label     string
+		st        model.Status
+		isAll     bool
+		isDefault bool
 	}
 	chips := []chip{
-		{"0", "All", 0, true},
-		{"1", "Backlog", model.StatusBacklog, false},
-		{"2", "Pending", model.StatusPending, false},
-		{"3", "Active", model.StatusActive, false},
-		{"4", "Blocked", model.StatusBlocked, false},
-		{"5", "Done", model.StatusDone, false},
-		{"6", "Cancelled", model.StatusCancelled, false},
+		{"`", "Default", 0, false, true},
+		{"1", "Backlog", model.StatusBacklog, false, false},
+		{"2", "Pending", model.StatusPending, false, false},
+		{"3", "Active", model.StatusActive, false, false},
+		{"4", "Blocked", model.StatusBlocked, false, false},
+		{"5", "Done", model.StatusDone, false, false},
+		{"6", "Cancelled", model.StatusCancelled, false, false},
+		{"0", "All", 0, true, false},
 	}
 	isActive := func(c chip) bool {
-		if c.isAll {
+		switch {
+		case c.isAll:
 			return f.All
+		case c.isDefault:
+			return isDefaultFilter(f)
 		}
 		for _, s := range f.Statuses {
 			if s == c.st {
@@ -46,7 +51,7 @@ func renderFilterBar(st *Styles, f Filter, counts map[model.Status]int, width in
 			parts = append(parts, "  ")
 		}
 		text := fmt.Sprintf("[%s] %s", c.key, c.label)
-		if !c.isAll {
+		if !c.isAll && !c.isDefault {
 			text = fmt.Sprintf("%s %d", text, counts[c.st])
 		}
 		if isActive(c) {

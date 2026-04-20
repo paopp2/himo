@@ -19,7 +19,7 @@ func TestRenderFilterBar_showsAllChipsWithCounts(t *testing.T) {
 	}
 	bar := renderFilterBar(st, DefaultFilter(), counts, 120)
 	for _, want := range []string{
-		"[0] All", "[1] Backlog", "3",
+		"[`] Default", "[0] All", "[1] Backlog", "3",
 		"[2] Pending", "5",
 		"[3] Active", "1",
 		"[4] Blocked", "0",
@@ -29,6 +29,30 @@ func TestRenderFilterBar_showsAllChipsWithCounts(t *testing.T) {
 		if !strings.Contains(bar, want) {
 			t.Errorf("bar missing %q:\n%s", want, bar)
 		}
+	}
+}
+
+// Chip order: Default leads the bar, All trails it; status chips sit in
+// between in number order.
+func TestRenderFilterBar_chipOrder(t *testing.T) {
+	st := testStyles(t)
+	bar := renderFilterBar(st, DefaultFilter(), map[model.Status]int{}, 120)
+	order := []string{
+		"[`] Default",
+		"[1] Backlog", "[2] Pending", "[3] Active",
+		"[4] Blocked", "[5] Done", "[6] Cancelled",
+		"[0] All",
+	}
+	prev := -1
+	for _, want := range order {
+		i := strings.Index(bar, want)
+		if i < 0 {
+			t.Fatalf("bar missing %q:\n%s", want, bar)
+		}
+		if i <= prev {
+			t.Errorf("chip %q at %d, expected after %d:\n%s", want, i, prev, bar)
+		}
+		prev = i
 	}
 }
 

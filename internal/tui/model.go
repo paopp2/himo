@@ -311,14 +311,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "0":
 			m.filter = Filter{All: true}
 			m.cursor = 0
+		case "`":
+			m.filter = DefaultFilter()
+			m.cursor = 0
 		case "esc":
 			if m.allProjects {
 				m.exitAllProjects()
 			} else if m.searchActive != "" {
 				m.searchActive = ""
-				m.cursor = 0
-			} else {
-				m.filter = DefaultFilter()
 				m.cursor = 0
 			}
 		case "tab":

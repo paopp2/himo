@@ -37,15 +37,36 @@ func TestFilter_zero(t *testing.T) {
 	}
 }
 
-func TestFilter_esc(t *testing.T) {
+// Backtick resets to the default Pending+Active+Blocked view from any filter.
+func TestFilter_backtickResetsToDefault(t *testing.T) {
 	m := NewModel(testProject(t))
-	m.filter = Filter{All: true}
-	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m.filter = Filter{Statuses: []model.Status{model.StatusDone}}
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}})
 	f := m2.(Model).filter
 	if f.All {
-		t.Errorf("after Esc, filter.All = true, want default")
+		t.Errorf("after `, filter.All = true, want default")
+	}
+	want := map[model.Status]bool{
+		model.StatusPending: true, model.StatusActive: true, model.StatusBlocked: true,
 	}
 	if len(f.Statuses) != 3 {
-		t.Errorf("after Esc, filter.Statuses has %d, want 3", len(f.Statuses))
+		t.Fatalf("after `, filter.Statuses has %d, want 3", len(f.Statuses))
+	}
+	for _, s := range f.Statuses {
+		if !want[s] {
+			t.Errorf("after `, unexpected status %v", s)
+		}
+	}
+}
+
+// Esc on a single-status filter is a no-op for the filter (Esc is for All /
+// search exits only). The filter must survive unchanged.
+func TestFilter_escDoesNotResetCustomFilter(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.filter = Filter{Statuses: []model.Status{model.StatusDone}}
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	f := m2.(Model).filter
+	if len(f.Statuses) != 1 || f.Statuses[0] != model.StatusDone {
+		t.Errorf("after Esc, filter = %+v, want Done only", f)
 	}
 }

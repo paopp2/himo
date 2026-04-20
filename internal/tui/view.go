@@ -46,14 +46,14 @@ func renderHelp(st *Styles, width int) string {
 		{"q", "quit"},
 	})
 	filters := col("Filters", [][2]string{
-		{"0", "all"},
+		{"`", "default filter"},
 		{"1", "backlog"},
 		{"2", "pending"},
 		{"3", "active"},
 		{"4", "blocked"},
 		{"5", "done"},
 		{"6", "cancelled"},
-		{"Esc", "default filter"},
+		{"0", "all"},
 	})
 	actions := col("Actions", [][2]string{
 		{"Enter", "notes in $EDITOR"},
@@ -260,7 +260,7 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	if visible == "" {
 		visible = m.styles.Muted.Render(
 			"No tasks match the current filter.\n" +
-				"Press Esc to reset filter, o to add one.")
+				"Press ` to reset filter, o to add one.")
 	}
 	// Subtract 2 from both dims so the rendered box (inner + border) is
 	// exactly width x height cells. Lipgloss adds the border outside of
@@ -375,7 +375,7 @@ func renderPreview(in previewInput) string {
 	case in.Task == nil:
 		body = in.Styles.Muted.Render(
 			"No tasks match the current filter.\n" +
-				"Press Esc to reset filter, o to add one.")
+				"Press ` to reset filter, o to add one.")
 	case !in.Task.HasNotes():
 		glyph := in.Styles.GlyphStyle(in.Task.Status).Render(in.Styles.StatusGlyph(in.Task.Status))
 		header = glyph + " " + in.Task.Title
