@@ -52,6 +52,26 @@ func TestRenderTaskLine_notesDot(t *testing.T) {
 	}
 }
 
+func TestRenderTaskLine_notesDotAccentWhenURL(t *testing.T) {
+	st := testStyles(t)
+
+	// Task with notes but no URL: dot should still be present.
+	noURL := renderTaskLine(st, model.Task{
+		Status: model.StatusPending, Title: "X", Notes: "    just notes",
+	}, taskLineInput{Width: 40})
+	if !strings.Contains(noURL, "\u2022") {
+		t.Errorf("notes-only task missing dot: %q", noURL)
+	}
+
+	// Task with a URL in notes: dot should still be present.
+	withURL := renderTaskLine(st, model.Task{
+		Status: model.StatusPending, Title: "X", Notes: "    https://example.com",
+	}, taskLineInput{Width: 40})
+	if !strings.Contains(withURL, "\u2022") {
+		t.Errorf("URL task missing dot: %q", withURL)
+	}
+}
+
 func TestRenderTaskLine_allProjectsChip(t *testing.T) {
 	st := testStyles(t)
 	line := renderTaskLine(st, model.Task{Status: model.StatusActive, Title: "X"},

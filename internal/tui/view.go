@@ -324,7 +324,11 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 
 	dot := " "
 	if t.HasNotes() {
-		dot = st.Muted.Render("•")
+		if t.URL() != "" {
+			dot = st.Accent.Render("•")
+		} else {
+			dot = st.Muted.Render("•")
+		}
 	}
 
 	left := bar + " " + glyph + " " + title
