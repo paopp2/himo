@@ -5,6 +5,17 @@ import (
 	"testing"
 )
 
+func TestRenderHelp_showsCtrlO(t *testing.T) {
+	st := testStyles(t)
+	out := renderHelp(st, 120)
+	if !strings.Contains(out, "Ctrl+o") {
+		t.Errorf("help missing Ctrl+o:\n%s", out)
+	}
+	if !strings.Contains(out, "open URL") {
+		t.Errorf("help missing 'open URL' label:\n%s", out)
+	}
+}
+
 func TestRenderHelp_threeColumns(t *testing.T) {
 	st := testStyles(t)
 	out := renderHelp(st, 120)
