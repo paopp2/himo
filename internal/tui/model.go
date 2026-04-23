@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -201,6 +202,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+	case urlOpenedMsg:
+		if msg.err != nil {
+			m.banner = "open URL: " + msg.err.Error()
+		}
 	case editorReturnedMsg:
 		m.undoStack = nil
 		m.redoStack = nil
@@ -376,6 +381,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editingProjectDir = m.project.Dir
 			}
 			return m, m.openEditor(ec)
+		case "ctrl+o":
+			_, doc, idx, ok := m.currentTaskItem()
+			if !ok {
+				return m, nil
+			}
+			task := doc.Items[idx].(store.TaskItem).Task
+			u := task.URL()
+			if u == "" {
+				m.banner = "no URL in notes"
+				return m, nil
+			}
+			return m, tea.ExecProcess(
+				exec.Command("open", u),
+				func(err error) tea.Msg { return urlOpenedMsg{err: err} },
+			)
 		case "e":
 			target := m.project
 			if m.allProjects {
@@ -685,6 +705,8 @@ func insertAtSlice(s []store.Item, idx int, it store.Item) []store.Item {
 	s[idx] = it
 	return s
 }
+
+type urlOpenedMsg struct{ err error }
 
 func (m Model) isBacklogFilter() bool {
 	return !m.filter.All &&
