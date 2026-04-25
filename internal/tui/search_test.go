@@ -126,6 +126,91 @@ func TestSearch_enterCommitsAtIncsearchCursor(t *testing.T) {
 	}
 }
 
+func TestSearch_nAdvancesToNextMatch(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if got := cur.(Model).cursor; got != 0 {
+		t.Fatalf("after commit, cursor = %d, want 0 (Buy groceries matches 'e')", got)
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("after n, cursor = %d, want 1 (Write design)", got)
+	}
+}
+
+func TestSearch_nWrapsAtEndAndSetsBanner(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 1
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if got := cur.(Model).cursor; got != 0 {
+		t.Errorf("n past last match: cursor = %d, want 0 (wrapped to Buy groceries)", got)
+	}
+	if got := cur.(Model).banner; got != "search hit BOTTOM, continuing at TOP" {
+		t.Errorf("wrap banner = %q, want %q", got, "search hit BOTTOM, continuing at TOP")
+	}
+}
+
+func TestSearch_NRetreatsToPreviousMatch(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 1
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}})
+	if got := cur.(Model).cursor; got != 0 {
+		t.Errorf("after N, cursor = %d, want 0", got)
+	}
+}
+
+func TestSearch_NWrapsAtStartAndSetsBanner(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}})
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("N past first match: cursor = %d, want 1 (wrapped)", got)
+	}
+	if got := cur.(Model).banner; got != "search hit TOP, continuing at BOTTOM" {
+		t.Errorf("wrap banner = %q, want %q", got, "search hit TOP, continuing at BOTTOM")
+	}
+}
+
+func TestSearch_nWithNoMatchesSetsBanner(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+	m.searchActive = "xyzzy"
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if got := cur.(Model).cursor; got != 0 {
+		t.Errorf("n with no matches moved cursor to %d, want 0", got)
+	}
+	if got := cur.(Model).banner; got != "no matches" {
+		t.Errorf("no-match banner = %q, want %q", got, "no matches")
+	}
+}
+
+func TestSearch_nWithNoActiveSearchIsNoop(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if got := cur.(Model).cursor; got != 0 {
+		t.Errorf("n with no searchActive should not move cursor, got %d", got)
+	}
+}
+
 func TestSearch_ctrlWDeletesLastWord(t *testing.T) {
 	m := NewModel(testProject(t))
 	var cur tea.Model = m

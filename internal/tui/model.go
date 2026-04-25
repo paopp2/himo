@@ -343,6 +343,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if n := len(m.visibleTasks()); n > 0 {
 				m.cursor = n - 1
 			}
+		case "n":
+			m.jumpMatch(true)
+		case "N":
+			m.jumpMatch(false)
 		case "ctrl+d":
 			half := maxInt(m.height/2, 1)
 			if n := len(m.visibleTasks()); n > 0 {
@@ -615,6 +619,35 @@ func (m *Model) applyIncsearch() {
 		return
 	}
 	m.cursor = idx
+}
+
+// jumpMatch moves the cursor to the next (forward=true) or previous match
+// of m.searchActive. Sets m.banner to vim's wrap message when the scan
+// wraps the boundary, or "no matches" when there are zero matches. No-op
+// when searchActive is empty.
+func (m *Model) jumpMatch(forward bool) {
+	if m.searchActive == "" {
+		return
+	}
+	locs := m.visibleTaskLocations()
+	from := m.cursor + 1
+	if !forward {
+		from = m.cursor - 1
+	}
+	idx, wrapped, ok := nextMatch(locs, m.searchActive, m.allProjects, from, forward)
+	if !ok {
+		m.banner = "no matches"
+		return
+	}
+	m.cursor = idx
+	if !wrapped {
+		return
+	}
+	if forward {
+		m.banner = "search hit BOTTOM, continuing at TOP"
+	} else {
+		m.banner = "search hit TOP, continuing at BOTTOM"
+	}
 }
 
 // setStatus changes the cursor task's status, normalizes, and saves.
