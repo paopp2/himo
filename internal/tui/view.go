@@ -55,6 +55,7 @@ func renderHelp(st *Styles, width int) string {
 		{"5", "done"},
 		{"6", "cancelled"},
 		{"0", "all"},
+		{"s", "toggle sort"},
 	})
 	actions := col("Actions", [][2]string{
 		{"Enter", "notes in $EDITOR"},
@@ -125,6 +126,7 @@ func renderView(m Model) string {
 		Current:  m.project.Name,
 		Width:    width,
 		AllMode:  m.allProjects,
+		Sort:     m.sort,
 	})
 	fbar := renderFilterBar(m.styles, m.filter, m.statusCounts(), width)
 

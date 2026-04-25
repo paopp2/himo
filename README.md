@@ -73,6 +73,8 @@ Vim-style. Left pane is the task list, right pane previews the highlighted task'
 
 **Filters:** `0` all, `1` backlog, `2` pending, `3` active, `4` blocked, `5` done, `6` cancelled, `Esc` default
 
+**Sort:** `s` toggle between natural order and by-status (active -> blocked -> pending -> backlog -> done -> cancelled)
+
 **Actions:** `Enter` open notes in editor, `e` edit title inline, `Space` cycle status, `o`/`O` new task, `d` delete, `!` block, `x` done, `-` cancel
 
 **Scope:** `Tab`/`Shift+Tab` switch project, `P` project picker, `A` all projects

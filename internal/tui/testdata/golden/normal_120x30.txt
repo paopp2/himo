@@ -1,4 +1,4 @@
-                                                                                                     [A] all  [P] picker
+                                                                                   [A] all  [P] picker  [s] sort:natural
 [`] Default  [1] Backlog 0  [2] Pending 1  [3] Active 1  [4] Blocked 0  [5] Done 0  [6] Cancelled 0  [0] All
 
 ╭──────────────────────────────────────────────────────────────────────╮  ╭────────────────────────────────────────────╮

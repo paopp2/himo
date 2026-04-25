@@ -31,3 +31,28 @@ func TestRenderTopBar_allProjectsMode(t *testing.T) {
 		t.Errorf("all-mode top bar missing label:\n%s", out)
 	}
 }
+
+func TestRenderTopBar_sortIndicator(t *testing.T) {
+	st := testStyles(t)
+	natural := renderTopBar(st, topBarInput{
+		Projects: []string{"work"},
+		Current:  "work",
+		Width:    100,
+		Sort:     SortNatural,
+	})
+	if !strings.Contains(natural, "sort:natural") {
+		t.Errorf("natural mode topbar missing 'sort:natural':\n%s", natural)
+	}
+	status := renderTopBar(st, topBarInput{
+		Projects: []string{"work"},
+		Current:  "work",
+		Width:    100,
+		Sort:     SortStatus,
+	})
+	if !strings.Contains(status, "sort:status") {
+		t.Errorf("status mode topbar missing 'sort:status':\n%s", status)
+	}
+	if !strings.Contains(status, "[s]") {
+		t.Errorf("status mode topbar missing [s] hint:\n%s", status)
+	}
+}

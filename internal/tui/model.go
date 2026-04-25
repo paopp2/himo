@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -118,6 +119,7 @@ type Model struct {
 	undoStack         []historyEntry
 	redoStack         []historyEntry
 	styles            *Styles
+	sort              Sort
 }
 
 // NewModel builds a fresh Model for the given project.
@@ -191,6 +193,19 @@ func (m Model) SessionProject() string {
 // persistence. Returns "" when the filter has no canonical name.
 func (m Model) SessionFilter() string {
 	return m.filter.Name()
+}
+
+// WithSort returns m with its initial sort mode replaced. Used by main.go
+// to restore a persisted sort on launch.
+func (m Model) WithSort(s Sort) Model {
+	m.sort = s
+	return m
+}
+
+// SessionSort is the current sort encoded as a stable name for state
+// persistence.
+func (m Model) SessionSort() string {
+	return sortName(m.sort)
 }
 
 // SessionAllProjects reports whether the user is in all-projects view.
@@ -367,6 +382,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "v":
 			m.hidePreview = !m.hidePreview
+		case "s":
+			if m.sort == SortStatus {
+				m.sort = SortNatural
+			} else {
+				m.sort = SortStatus
+			}
+			m.cursor = 0
 		case "u":
 			m.undo()
 		case "ctrl+r":
@@ -513,6 +535,21 @@ func (m Model) visibleTaskLocations() []taskLoc {
 				out = append(out, taskLoc{proj: p, doc: d, idx: i})
 			}
 		}
+	}
+	if m.sort == SortStatus && len(out) > 1 {
+		projIdx := make(map[*store.Project]int, len(projects))
+		for i, p := range projects {
+			projIdx[p] = i
+		}
+		sort.SliceStable(out, func(i, j int) bool {
+			a, b := out[i], out[j]
+			ra := statusSortRank(a.doc.Items[a.idx].(store.TaskItem).Task.Status)
+			rb := statusSortRank(b.doc.Items[b.idx].(store.TaskItem).Task.Status)
+			if ra != rb {
+				return ra < rb
+			}
+			return projIdx[a.proj] < projIdx[b.proj]
+		})
 	}
 	return out
 }

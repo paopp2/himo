@@ -17,6 +17,7 @@ type State struct {
 	LastProject     string `toml:"last_project"`
 	LastFilter      string `toml:"last_filter"`
 	LastAllProjects bool   `toml:"last_all_projects"`
+	LastSort        string `toml:"last_sort"`
 }
 
 // Path resolves to $XDG_STATE_HOME/himo/state.toml, defaulting to

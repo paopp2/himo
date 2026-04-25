@@ -130,6 +130,9 @@ func openTUI(cfg *config.Config, project string, st *state.State) {
 	if st.LastFilter != "" {
 		m = m.WithFilter(tui.FilterFromName(st.LastFilter))
 	}
+	if st.LastSort != "" {
+		m = m.WithSort(tui.SortFromName(st.LastSort))
+	}
 	if st.LastAllProjects {
 		m = m.WithAllProjects()
 	}
@@ -144,6 +147,9 @@ func openTUI(cfg *config.Config, project string, st *state.State) {
 		}
 		if f := fm.SessionFilter(); f != "" {
 			st.LastFilter = f
+		}
+		if s := fm.SessionSort(); s != "" {
+			st.LastSort = s
 		}
 		st.LastAllProjects = fm.SessionAllProjects()
 		if err := state.Save(st); err != nil {
