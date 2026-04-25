@@ -755,17 +755,15 @@ func (m *Model) insertNewTask(title string) {
 	}
 }
 
-// newStyledInput returns a textinput with himo's static accent caret;
-// CursorStatic avoids wiring blink commands through Update. SetMode on an
-// unfocused cursor leaves Blink=true (cursor.View renders char without
-// Reverse), which hides the cell; force Blink=false so the cursor cell
-// renders as an accent-bg block in color terminals.
+// newStyledInput returns a textinput with himo's static accent caret.
+// CursorStatic avoids wiring blink commands through Update; cursor.Focus
+// flips Blink to false on entry so View renders the cell as an
+// accent-bg reverse block in color terminals.
 func newStyledInput(st *Styles) textinput.Model {
 	ti := textinput.New()
 	ti.Prompt = ""
 	ti.CharLimit = 0
 	ti.Cursor.SetMode(cursor.CursorStatic)
-	ti.Cursor.Blink = false
 	ti.Cursor.Style = st.Accent
 	return ti
 }
