@@ -529,9 +529,6 @@ func (m Model) visibleTaskLocations() []taskLoc {
 						continue
 					}
 				}
-				if m.searchActive != "" && !strings.Contains(strings.ToLower(ti.Task.Title), strings.ToLower(m.searchActive)) {
-					continue
-				}
 				out = append(out, taskLoc{proj: p, doc: d, idx: i})
 			}
 		}

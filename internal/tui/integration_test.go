@@ -34,21 +34,6 @@ func TestIntegration_cycleAndFilterDone(t *testing.T) {
 	tm.WaitFinished(t)
 }
 
-func TestIntegration_search(t *testing.T) {
-	tm, _ := newIntegrationTestModel(t)
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
-	for _, r := range "groc" {
-		tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
-	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
-	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
-		s := string(b)
-		return strings.Contains(s, "Buy groceries") && !strings.Contains(s, "Write design")
-	}, teatest.WithDuration(2*time.Second))
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
-	tm.WaitFinished(t)
-}
-
 func TestIntegration_newTaskInBacklog(t *testing.T) {
 	tm, p := newIntegrationTestModel(t)
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
