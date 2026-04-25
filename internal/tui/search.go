@@ -8,9 +8,6 @@ import (
 	"github.com/paopp2/himo/internal/store"
 )
 
-// highlightMatch returns s with all case-insensitive occurrences of needle
-// rendered through hl, and the rest rendered through base. Empty needle
-// returns base.Render(s) unchanged.
 func highlightMatch(s, needle string, base, hl lipgloss.Style) string {
 	if needle == "" {
 		return base.Render(s)
@@ -37,8 +34,6 @@ func highlightMatch(s, needle string, base, hl lipgloss.Style) string {
 	return b.String()
 }
 
-// taskLocMatches reports whether loc's task title (or project name when
-// allProjects is true) contains needleLower (already lowercased).
 func taskLocMatches(loc taskLoc, needleLower string, allProjects bool) bool {
 	ti, ok := loc.doc.Items[loc.idx].(store.TaskItem)
 	if !ok {
@@ -54,9 +49,6 @@ func taskLocMatches(loc taskLoc, needleLower string, allProjects bool) bool {
 	return false
 }
 
-// matchIndices returns positions in locs whose task matches needle,
-// case-insensitive. In all-projects mode the project name is also matched.
-// Empty needle returns nil.
 func matchIndices(locs []taskLoc, needle string, allProjects bool) []int {
 	if needle == "" {
 		return nil
@@ -93,15 +85,10 @@ func nextMatch(locs []taskLoc, needle string, allProjects bool, from int, forwar
 		if !taskLocMatches(locs[pos], needleLower, allProjects) {
 			continue
 		}
-		w := fromOOB
-		if !w {
-			if forward && pos < start {
-				w = true
-			} else if !forward && pos > start {
-				w = true
-			}
-		}
-		return pos, w, true
+		wrapped := fromOOB ||
+			(forward && pos < start) ||
+			(!forward && pos > start)
+		return pos, wrapped, true
 	}
 	return 0, false, false
 }

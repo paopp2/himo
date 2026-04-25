@@ -609,9 +609,6 @@ func (m Model) currentTaskItem() (*store.Project, *store.Document, int, bool) {
 	return loc.proj, loc.doc, loc.idx, true
 }
 
-// applyIncsearch updates m.cursor to the first match of the current
-// search buffer, scanning forward from preSearchCursor. Empty buffer or
-// no-match restores cursor to preSearchCursor.
 func (m *Model) applyIncsearch() {
 	q := m.searchInput.Value()
 	if q == "" {

@@ -213,11 +213,12 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	if width <= 0 {
 		width = defaultWidth
 	}
+	query := m.activeSearchQuery()
 	for i, t := range tasks {
 		opts := taskLineInput{
 			Width:       width,
 			Cursor:      i == m.cursor,
-			SearchQuery: m.activeSearchQuery(),
+			SearchQuery: query,
 		}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
@@ -242,12 +243,13 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 		contentH = 1
 	}
 
+	query := m.activeSearchQuery()
 	rows := make([]string, len(tasks))
 	for i, t := range tasks {
 		opts := taskLineInput{
 			Width:       width - 2,
 			Cursor:      i == m.cursor && !m.prompting,
-			SearchQuery: m.activeSearchQuery(),
+			SearchQuery: query,
 		}
 		if i == m.cursor && m.editing {
 			opts.Editing = true
