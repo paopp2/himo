@@ -612,7 +612,7 @@ func today() string {
 // updatePrompt handles a keystroke while the new-task prompt is active.
 func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 	switch msg.Type {
-	case tea.KeyEsc:
+	case tea.KeyEsc, tea.KeyCtrlC:
 		m.prompting = false
 		m.promptBuf = ""
 		m.promptAbove = false
