@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/paopp2/himo/internal/model"
 	"github.com/paopp2/himo/internal/store"
 )
@@ -133,5 +134,25 @@ func TestVisibleTasks_SortStatusInterleavesProjects(t *testing.T) {
 		if !strings.HasSuffix(got[i], suffix) {
 			t.Errorf("row %d = %q, want suffix %q (full got: %v)", i, got[i], suffix, got)
 		}
+	}
+}
+
+func TestSortKeybind_togglesAndResetsCursor(t *testing.T) {
+	m := NewModel(sortFixtureProject(t))
+	m.filter = Filter{All: true}
+	m.cursor = 3 // anywhere non-zero so the reset is observable
+
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	got := m2.(Model)
+	if got.sort != SortStatus {
+		t.Errorf("after s: sort = %v, want SortStatus", got.sort)
+	}
+	if got.cursor != 0 {
+		t.Errorf("after s: cursor = %d, want 0", got.cursor)
+	}
+
+	m3, _ := got.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	if m3.(Model).sort != SortNatural {
+		t.Errorf("after second s: sort = %v, want SortNatural", m3.(Model).sort)
 	}
 }

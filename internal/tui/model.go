@@ -382,6 +382,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "v":
 			m.hidePreview = !m.hidePreview
+		case "s":
+			if m.sort == SortStatus {
+				m.sort = SortNatural
+			} else {
+				m.sort = SortStatus
+			}
+			m.cursor = 0
 		case "u":
 			m.undo()
 		case "ctrl+r":
