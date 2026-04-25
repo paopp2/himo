@@ -51,17 +51,17 @@ func titles(ts []model.Task) []string {
 	return out
 }
 
-func TestSearch_escDuringTypingRestoresCursor(t *testing.T) {
+func TestSearch_escDuringTypingKeepsIncsearchCursor(t *testing.T) {
 	m := NewModel(testProject(t))
-	m.cursor = 1 // testProject has 2 tasks; start cursor on the second.
+	m.cursor = 0 // testProject: [0] Buy groceries, [1] Write design.
 	var cur tea.Model = m
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
-	for _, r := range "groc" {
+	for _, r := range "design" {
 		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if got := cur.(Model).cursor; got != 1 {
-		t.Errorf("after Esc, cursor = %d, want 1 (preSearchCursor)", got)
+		t.Errorf("after Esc, cursor = %d, want 1 (incsearch landing position)", got)
 	}
 	if got := cur.(Model).searchActive; got != "" {
 		t.Errorf("after Esc, searchActive = %q, want empty", got)

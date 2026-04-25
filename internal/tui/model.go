@@ -321,7 +321,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyEsc:
 				m.searching = false
 				m.searchInput.Reset()
-				m.cursor = m.preSearchCursor
 			case tea.KeyEnter:
 				m.searchActive = m.searchInput.Value()
 				m.searching = false
