@@ -77,7 +77,7 @@ func middleHints(st *Styles, in hintInput) string {
 		if in.PromptAbove {
 			label = "New task (above)"
 		}
-		return st.Muted.Render(label+" > ") + in.PromptBuf + inputCursor(st)
+		return st.Muted.Render(label+" > ") + in.PromptBuf
 	case ModeEdit:
 		return st.Muted.Render("Edit > ") + in.EditBuf + inputCursor(st)
 	case ModeDelete:

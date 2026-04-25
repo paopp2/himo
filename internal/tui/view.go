@@ -159,7 +159,7 @@ func renderView(m Model) string {
 		Mode:        m.currentMode(),
 		Width:       width,
 		SearchBuf:   m.searchInput.View(),
-		PromptBuf:   m.promptBuf,
+		PromptBuf:   m.promptInput.Value(),
 		PromptAbove: m.promptAbove,
 		EditBuf:     m.editBuf,
 		DeleteTitle: deleteTitle(m, tasks),
@@ -246,7 +246,7 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 				ghostIdx = len(rows)
 			}
 		}
-		ghost := renderGhostRow(m.styles, m.promptBuf, width-2)
+		ghost := renderGhostRow(m.styles, m.promptInput.View(), width-2)
 		rows = append(rows[:ghostIdx], append([]string{ghost}, rows[ghostIdx:]...)...)
 		cursorRow = ghostIdx
 	}
@@ -278,10 +278,10 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	return m.styles.PaneBorderFocused.Width(width - 2).Height(height - 2).Render(visible)
 }
 
-func renderGhostRow(st *Styles, buf string, width int) string {
+func renderGhostRow(st *Styles, body string, width int) string {
 	bar := st.CursorBar.Render("▌")
 	marker := st.Accent.Render("+")
-	left := bar + " " + marker + " " + buf + inputCursor(st)
+	left := bar + " " + marker + " " + body
 	padding := width - lipgloss.Width(left)
 	if padding < 0 {
 		padding = 0

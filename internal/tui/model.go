@@ -98,7 +98,7 @@ type Model struct {
 	projects          []string
 	hidePreview       bool
 	prompting         bool
-	promptBuf         string
+	promptInput       textinput.Model
 	promptAbove       bool
 	confirmingDelete  bool
 	banner            string
@@ -128,7 +128,7 @@ func NewModel(p *store.Project) Model {
 // NewModelWithOptions is like NewModel but takes style options.
 func NewModelWithOptions(p *store.Project, opts StyleOptions) Model {
 	st := NewStyles(opts)
-	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st), pickerInput: newStyledInput(st)}
+	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st), pickerInput: newStyledInput(st), promptInput: newStyledInput(st)}
 }
 
 // NewModelFromBase loads the named project from baseDir and returns a Model
@@ -151,6 +151,7 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 		styles:      st,
 		searchInput: newStyledInput(st),
 		pickerInput: newStyledInput(st),
+		promptInput: newStyledInput(st),
 	}, nil
 }
 
@@ -367,11 +368,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cycleStatus()
 		case "o":
 			m.prompting = true
-			m.promptBuf = ""
+			m.promptInput.Reset()
+			m.promptInput.Focus()
 			m.promptAbove = false
 		case "O":
 			m.prompting = true
-			m.promptBuf = ""
+			m.promptInput.Reset()
+			m.promptInput.Focus()
 			m.promptAbove = true
 		case "/":
 			m.searching = true
@@ -618,23 +621,19 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc, tea.KeyCtrlC:
 		m.prompting = false
-		m.promptBuf = ""
+		m.promptInput.Reset()
 		m.promptAbove = false
 	case tea.KeyEnter:
-		if m.promptBuf != "" {
-			m.insertNewTask(m.promptBuf)
+		if v := m.promptInput.Value(); v != "" {
+			m.insertNewTask(v)
 		}
 		m.prompting = false
-		m.promptBuf = ""
+		m.promptInput.Reset()
 		m.promptAbove = false
-	case tea.KeyBackspace:
-		if len(m.promptBuf) > 0 {
-			m.promptBuf = m.promptBuf[:len(m.promptBuf)-1]
-		}
-	case tea.KeyRunes:
-		m.promptBuf += string(msg.Runes)
-	case tea.KeySpace:
-		m.promptBuf += " "
+	default:
+		var cmd tea.Cmd
+		m.promptInput, cmd = m.promptInput.Update(normalizeKeySpace(msg))
+		_ = cmd
 	}
 	return m
 }
@@ -753,6 +752,18 @@ func (m *Model) insertNewTask(title string) {
 	if !m.promptAbove && haveCursor && m.cursor+1 < len(m.visibleTasks()) {
 		m.cursor++
 	}
+}
+
+// normalizeKeySpace converts a bare KeySpace message (Runes==nil) into a
+// KeyRunes message so that textinput.Model.Update inserts the space character.
+// Bubbletea's terminal parser populates Runes with []rune{' '}, but tests that
+// construct tea.KeyMsg{Type: tea.KeySpace} directly leave Runes empty.
+func normalizeKeySpace(msg tea.KeyMsg) tea.KeyMsg {
+	if msg.Type == tea.KeySpace && len(msg.Runes) == 0 {
+		msg.Type = tea.KeyRunes
+		msg.Runes = []rune{' '}
+	}
+	return msg
 }
 
 // newStyledInput returns a textinput with himo's static accent caret;
