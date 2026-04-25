@@ -753,10 +753,8 @@ func (m *Model) insertNewTask(title string) {
 	}
 }
 
-// newStyledInput builds a textinput configured to match himo's accent-block
-// caret, with no prompt (surrounding chrome is rendered separately) and no
-// character cap. Cursor blink is disabled so we don't have to wire blink
-// commands into Update.
+// newStyledInput returns a textinput with himo's static accent caret;
+// CursorStatic avoids wiring blink commands through Update.
 func newStyledInput(st *Styles) textinput.Model {
 	ti := textinput.New()
 	ti.Prompt = ""
