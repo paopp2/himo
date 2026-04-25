@@ -290,12 +290,6 @@ func renderGhostRow(st *Styles, body string, width int) string {
 	return st.PaintCursorRow(row)
 }
 
-// inputCursor returns the styled block glyph used as the text-input caret
-// in the ghost row, the prompt, and search.
-func inputCursor(st *Styles) string {
-	return st.Accent.Render("█")
-}
-
 type taskLineInput struct {
 	Width       int
 	Cursor      bool
