@@ -55,6 +55,7 @@ func renderHelp(st *Styles, width int) string {
 		{"5", "done"},
 		{"6", "cancelled"},
 		{"0", "all"},
+		{"s", "toggle sort"},
 	})
 	actions := col("Actions", [][2]string{
 		{"Enter", "notes in $EDITOR"},

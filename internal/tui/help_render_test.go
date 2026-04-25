@@ -42,3 +42,11 @@ func TestRenderHelp_showsInlineEdit(t *testing.T) {
 		t.Errorf("help still mentions removed 'edit current file' action:\n%s", out)
 	}
 }
+
+func TestRenderHelp_showsSortToggle(t *testing.T) {
+	st := testStyles(t)
+	out := renderHelp(st, 120)
+	if !strings.Contains(out, "toggle sort") {
+		t.Errorf("help missing 'toggle sort' label:\n%s", out)
+	}
+}
