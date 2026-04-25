@@ -27,4 +27,4 @@
 │                                                                      │  │                                            │
 │                                                                      │  │                                            │
 ╰──────────────────────────────────────────────────────────────────────╯  ╰────────────────────────────────────────────╯
- EDIT   Edit > Buy gro                                                                         Enter apply  Esc cancel
+ INSERT   Enter apply  Esc cancel  C-w del word                                                                       
