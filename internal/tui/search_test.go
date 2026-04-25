@@ -8,6 +8,23 @@ import (
 	"github.com/paopp2/himo/internal/model"
 )
 
+func TestSearch_escInAllProjectsClearsSearchBeforeExitingScope(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.allProjects = true
+	m.searchActive = "design"
+	m.cursor = 1
+	cur, _ := tea.Model(m).(Model).Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if got := cur.(Model).searchActive; got != "" {
+		t.Errorf("first Esc: searchActive = %q, want empty", got)
+	}
+	if got := cur.(Model).allProjects; !got {
+		t.Errorf("first Esc: allProjects = false, want true (scope preserved)")
+	}
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("first Esc: cursor = %d, want 1 (unchanged)", got)
+	}
+}
+
 func TestSearch_escClearsActiveSearchKeepsCursor(t *testing.T) {
 	m := NewModel(testProject(t))
 	var cur tea.Model = m
