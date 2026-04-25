@@ -169,12 +169,25 @@ func renderView(m Model) string {
 		body = lipgloss.JoinHorizontal(lipgloss.Top, listPane, "  ", previewPane)
 	}
 
+	query := m.activeSearchQuery()
+	matches := matchIndices(locs, query, m.allProjects)
+	matchIdx := -1
+	for i, p := range matches {
+		if p == m.cursor {
+			matchIdx = i + 1
+			break
+		}
+	}
+
 	hint := renderHintBar(m.styles, hintInput{
-		Mode:        m.currentMode(),
-		Width:       width,
-		SearchBuf:   m.searchInput.View(),
-		DeleteTitle: deleteTitle(m, tasks),
-		Banner:      m.banner,
+		Mode:           m.currentMode(),
+		Width:          width,
+		SearchBuf:      m.searchInput.View(),
+		DeleteTitle:    deleteTitle(m, tasks),
+		Banner:         m.banner,
+		SearchActive:   query,
+		SearchMatchIdx: matchIdx,
+		SearchTotal:    len(matches),
 	})
 	view := top + "\n"
 	if fbar != "" {

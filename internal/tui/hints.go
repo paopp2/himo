@@ -37,11 +37,14 @@ func (m Mode) String() string {
 }
 
 type hintInput struct {
-	Mode        Mode
-	Width       int
-	SearchBuf   string
-	DeleteTitle string
-	Banner      string
+	Mode           Mode
+	Width          int
+	SearchBuf      string
+	DeleteTitle    string
+	Banner         string
+	SearchActive   string
+	SearchMatchIdx int // -1 when cursor is not on a match
+	SearchTotal    int
 }
 
 func renderHintBar(st *Styles, in hintInput) string {
@@ -88,6 +91,9 @@ func metaHints(st *Styles, in hintInput) string {
 	if in.Banner != "" {
 		parts = append(parts, st.Err.Render("! ")+in.Banner)
 	}
+	if ind := searchIndicator(st, in); ind != "" {
+		parts = append(parts, ind)
+	}
 	switch in.Mode {
 	case ModeNormal, ModeHelp:
 		parts = append(parts, st.Muted.Render("? help"))
@@ -97,6 +103,20 @@ func metaHints(st *Styles, in hintInput) string {
 		parts = append(parts, st.Muted.Render("y delete  n cancel"))
 	}
 	return strings.Join(parts, "  |  ")
+}
+
+func searchIndicator(st *Styles, in hintInput) string {
+	if in.SearchActive == "" {
+		return ""
+	}
+	switch {
+	case in.SearchTotal == 0:
+		return st.Muted.Render("no matches")
+	case in.SearchMatchIdx >= 0:
+		return st.Muted.Render(fmt.Sprintf("match %d / %d", in.SearchMatchIdx, in.SearchTotal))
+	default:
+		return st.Muted.Render(fmt.Sprintf("%d matches", in.SearchTotal))
+	}
 }
 
 func hintList(st *Styles, kvs [][2]string) string {

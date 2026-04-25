@@ -66,6 +66,55 @@ func TestHintBar_insertPillForEdit(t *testing.T) {
 	}
 }
 
+func TestMetaHints_searchMatchPosition(t *testing.T) {
+	st := NewStyles(StyleOptions{NoColor: true})
+	got := stripANSI(metaHints(st, hintInput{
+		Mode:           ModeNormal,
+		SearchActive:   "groc",
+		SearchMatchIdx: 1,
+		SearchTotal:    3,
+	}))
+	if !strings.Contains(got, "match 1 / 3") {
+		t.Errorf("meta hints missing 'match 1 / 3': %q", got)
+	}
+}
+
+func TestMetaHints_searchTotalOnlyWhenOffMatch(t *testing.T) {
+	st := NewStyles(StyleOptions{NoColor: true})
+	got := stripANSI(metaHints(st, hintInput{
+		Mode:           ModeNormal,
+		SearchActive:   "groc",
+		SearchMatchIdx: -1,
+		SearchTotal:    3,
+	}))
+	if !strings.Contains(got, "3 matches") {
+		t.Errorf("meta hints missing '3 matches': %q", got)
+	}
+}
+
+func TestMetaHints_searchNoMatches(t *testing.T) {
+	st := NewStyles(StyleOptions{NoColor: true})
+	got := stripANSI(metaHints(st, hintInput{
+		Mode:           ModeNormal,
+		SearchActive:   "xyz",
+		SearchMatchIdx: -1,
+		SearchTotal:    0,
+	}))
+	if !strings.Contains(got, "no matches") {
+		t.Errorf("meta hints missing 'no matches': %q", got)
+	}
+}
+
+func TestMetaHints_noIndicatorWhenSearchInactive(t *testing.T) {
+	st := NewStyles(StyleOptions{NoColor: true})
+	got := stripANSI(metaHints(st, hintInput{
+		Mode: ModeNormal,
+	}))
+	if strings.Contains(got, "match") || strings.Contains(got, "matches") {
+		t.Errorf("inactive search showed match indicator: %q", got)
+	}
+}
+
 func TestHintBar_banner(t *testing.T) {
 	st := testStyles(t)
 	out := renderHintBar(st, hintInput{
