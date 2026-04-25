@@ -375,7 +375,7 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 
 func renderPickerBody(m Model) string {
 	var b strings.Builder
-	b.WriteString("/ " + m.pickerFilter + "_\n\n")
+	b.WriteString("/ " + m.pickerInput.View() + "\n\n")
 	for i, n := range m.filteredProjects() {
 		prefix := "  "
 		if i == m.pickerCursor {

@@ -108,7 +108,7 @@ type Model struct {
 	showingHelp       bool
 	pickerOpen        bool
 	pickerCursor      int
-	pickerFilter      string
+	pickerInput       textinput.Model
 	editing           bool
 	editBuf           string
 	editOrig          string
@@ -128,7 +128,7 @@ func NewModel(p *store.Project) Model {
 // NewModelWithOptions is like NewModel but takes style options.
 func NewModelWithOptions(p *store.Project, opts StyleOptions) Model {
 	st := NewStyles(opts)
-	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st)}
+	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st), pickerInput: newStyledInput(st)}
 }
 
 // NewModelFromBase loads the named project from baseDir and returns a Model
@@ -150,6 +150,7 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 		projects:    projects,
 		styles:      st,
 		searchInput: newStyledInput(st),
+		pickerInput: newStyledInput(st),
 	}, nil
 }
 
@@ -348,7 +349,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "P":
 			m.pickerOpen = true
 			m.pickerCursor = 0
-			m.pickerFilter = ""
+			m.pickerInput.Reset()
+			m.pickerInput.Focus()
 		case "A":
 			if m.allProjects {
 				m.exitAllProjects()
@@ -780,12 +782,13 @@ func (m Model) isBacklogFilter() bool {
 		m.filter.Statuses[0] == model.StatusBacklog
 }
 
-// filteredProjects returns project names that contain pickerFilter (case-insensitive).
+// filteredProjects returns project names that contain the picker filter (case-insensitive).
 func (m Model) filteredProjects() []string {
-	if m.pickerFilter == "" {
+	filter := m.pickerInput.Value()
+	if filter == "" {
 		return m.projects
 	}
-	needle := strings.ToLower(m.pickerFilter)
+	needle := strings.ToLower(filter)
 	out := make([]string, 0, len(m.projects))
 	for _, n := range m.projects {
 		if strings.Contains(strings.ToLower(n), needle) {
@@ -800,7 +803,7 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc:
 		m.pickerOpen = false
-		m.pickerFilter = ""
+		m.pickerInput.Reset()
 		m.pickerCursor = 0
 		return m
 	case tea.KeyEnter:
@@ -815,7 +818,7 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 			}
 		}
 		m.pickerOpen = false
-		m.pickerFilter = ""
+		m.pickerInput.Reset()
 		m.pickerCursor = 0
 		return m
 	case tea.KeyUp:
@@ -826,17 +829,14 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 		if m.pickerCursor+1 < len(m.filteredProjects()) {
 			m.pickerCursor++
 		}
-	case tea.KeyBackspace:
-		if n := len(m.pickerFilter); n > 0 {
-			m.pickerFilter = m.pickerFilter[:n-1]
+	default:
+		before := m.pickerInput.Value()
+		var cmd tea.Cmd
+		m.pickerInput, cmd = m.pickerInput.Update(msg)
+		_ = cmd
+		if m.pickerInput.Value() != before {
 			m.pickerCursor = 0
 		}
-	case tea.KeyRunes:
-		m.pickerFilter += string(msg.Runes)
-		m.pickerCursor = 0
-	case tea.KeySpace:
-		m.pickerFilter += " "
-		m.pickerCursor = 0
 	}
 	return m
 }
