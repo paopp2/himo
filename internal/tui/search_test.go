@@ -230,6 +230,28 @@ func TestSearch_activeQueryUsesLiveBufferWhileTyping(t *testing.T) {
 	}
 }
 
+func TestSearch_nClearsStaleBannerOnSuccessfulJump(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 1
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	// Wrap at end -> banner set.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if got := cur.(Model).banner; got == "" {
+		t.Fatalf("expected wrap banner after first n, got empty")
+	}
+	// Next n is a non-wrapping forward jump (cursor at 0, match at 1).
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if got := cur.(Model).banner; got != "" {
+		t.Errorf("expected banner cleared on non-wrap jump, got %q", got)
+	}
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("cursor = %d, want 1", got)
+	}
+}
+
 func TestSearch_ctrlWDeletesLastWord(t *testing.T) {
 	m := NewModel(testProject(t))
 	var cur tea.Model = m

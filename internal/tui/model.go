@@ -650,6 +650,7 @@ func (m *Model) jumpMatch(forward bool) {
 		return
 	}
 	m.cursor = idx
+	m.banner = ""
 	if !wrapped {
 		return
 	}
