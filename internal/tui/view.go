@@ -85,14 +85,26 @@ func renderView(m Model) string {
 	if width <= 0 {
 		width = defaultWidth
 	}
-	if m.showingHelp {
-		return renderHelp(m.styles, width) + "\n" +
-			renderHintBar(m.styles, hintInput{Mode: ModeHelp, Width: width})
-	}
-
 	modalHeight := m.height
 	if modalHeight < defaultHeight {
 		modalHeight = defaultHeight
+	}
+	if m.showingHelp {
+		boxW := width - 8
+		if boxW < 60 {
+			boxW = 60
+		}
+		// renderHelp lays out 3 columns inside the box; pass the inner
+		// width so the columns fit after the border + horizontal padding.
+		innerW := boxW - 4
+		return centeredBox(m.styles, modalInput{
+			Title:    "Keybindings",
+			Body:     renderHelp(m.styles, innerW),
+			Hints:    "? close",
+			Width:    width,
+			Height:   modalHeight,
+			BoxWidth: boxW,
+		})
 	}
 
 	locs := m.visibleTaskLocations()
@@ -161,9 +173,6 @@ func renderView(m Model) string {
 		Mode:        m.currentMode(),
 		Width:       width,
 		SearchBuf:   m.searchInput.View(),
-		PromptBuf:   m.promptInput.View(),
-		PromptAbove: m.promptAbove,
-		EditBuf:     m.editInput.View(),
 		DeleteTitle: deleteTitle(m, tasks),
 		Banner:      m.banner,
 	})

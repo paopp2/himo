@@ -27,6 +27,25 @@ func TestHelp_isModal(t *testing.T) {
 	}
 }
 
+func TestHelp_rendersAsModal(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.width, m.height = 120, 30
+	m.styles = testStyles(t)
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	view := renderView(m2.(Model))
+	for _, want := range []string{"╭", "╮", "╰", "╯"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("help view missing border char %q:\n%s", want, view)
+		}
+	}
+	if !strings.Contains(view, "Keybindings") {
+		t.Errorf("help view missing 'Keybindings' title:\n%s", view)
+	}
+	if !strings.Contains(view, "? close") {
+		t.Errorf("help view missing close hint:\n%s", view)
+	}
+}
+
 func TestHelp_toggle(t *testing.T) {
 	m := NewModel(testProject(t))
 	if m.showingHelp {

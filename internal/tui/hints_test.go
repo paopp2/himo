@@ -31,6 +31,41 @@ func TestHintBar_searchMode(t *testing.T) {
 	}
 }
 
+func TestHintBar_insertPillForPrompt(t *testing.T) {
+	st := testStyles(t)
+	out := renderHintBar(st, hintInput{Mode: ModePrompt, Width: 100})
+	if !strings.Contains(out, "INSERT") {
+		t.Errorf("expected INSERT pill for prompt mode:\n%s", out)
+	}
+	if strings.Contains(out, "PROMPT") {
+		t.Errorf("PROMPT pill should be replaced by INSERT:\n%s", out)
+	}
+	for _, k := range []string{"Enter", "apply", "Esc", "cancel", "C-w", "del word"} {
+		if !strings.Contains(out, k) {
+			t.Errorf("missing insert hint %q:\n%s", k, out)
+		}
+	}
+	if strings.Contains(out, "> ") {
+		t.Errorf("hint bar should not echo input:\n%s", out)
+	}
+}
+
+func TestHintBar_insertPillForEdit(t *testing.T) {
+	st := testStyles(t)
+	out := renderHintBar(st, hintInput{Mode: ModeEdit, Width: 100})
+	if !strings.Contains(out, "INSERT") {
+		t.Errorf("expected INSERT pill for edit mode:\n%s", out)
+	}
+	if strings.Contains(out, " EDIT ") {
+		t.Errorf("EDIT pill should be replaced by INSERT:\n%s", out)
+	}
+	for _, k := range []string{"Enter", "apply", "Esc", "cancel", "C-w", "del word"} {
+		if !strings.Contains(out, k) {
+			t.Errorf("missing insert hint %q:\n%s", k, out)
+		}
+	}
+}
+
 func TestHintBar_banner(t *testing.T) {
 	st := testStyles(t)
 	out := renderHintBar(st, hintInput{

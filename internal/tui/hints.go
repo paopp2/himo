@@ -22,10 +22,10 @@ const (
 var modeNames = [...]string{
 	ModeNormal: "NORMAL",
 	ModeSearch: "SEARCH",
-	ModePrompt: "PROMPT",
+	ModePrompt: "INSERT",
 	ModeDelete: "DELETE?",
 	ModePicker: "PICKER",
-	ModeEdit:   "EDIT",
+	ModeEdit:   "INSERT",
 	ModeHelp:   "HELP",
 }
 
@@ -40,9 +40,6 @@ type hintInput struct {
 	Mode        Mode
 	Width       int
 	SearchBuf   string
-	PromptBuf   string
-	PromptAbove bool
-	EditBuf     string
 	DeleteTitle string
 	Banner      string
 }
@@ -72,14 +69,10 @@ func middleHints(st *Styles, in hintInput) string {
 		})
 	case ModeSearch:
 		return st.Muted.Render("/ ") + in.SearchBuf
-	case ModePrompt:
-		label := "New task"
-		if in.PromptAbove {
-			label = "New task (above)"
-		}
-		return st.Muted.Render(label+" > ") + in.PromptBuf
-	case ModeEdit:
-		return st.Muted.Render("Edit > ") + in.EditBuf
+	case ModePrompt, ModeEdit:
+		return hintList(st, [][2]string{
+			{"Enter", "apply"}, {"Esc", "cancel"}, {"C-w", "del word"},
+		})
 	case ModeDelete:
 		return st.Err.Render("Delete: ") + in.DeleteTitle
 	case ModePicker:
@@ -98,7 +91,7 @@ func metaHints(st *Styles, in hintInput) string {
 	switch in.Mode {
 	case ModeNormal, ModeHelp:
 		parts = append(parts, st.Muted.Render("? help"))
-	case ModeSearch, ModePrompt, ModePicker, ModeEdit:
+	case ModeSearch, ModePicker:
 		parts = append(parts, st.Muted.Render("Enter apply  Esc cancel"))
 	case ModeDelete:
 		parts = append(parts, st.Muted.Render("y delete  n cancel"))
