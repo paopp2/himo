@@ -128,7 +128,15 @@ func NewModel(p *store.Project) Model {
 // NewModelWithOptions is like NewModel but takes style options.
 func NewModelWithOptions(p *store.Project, opts StyleOptions) Model {
 	st := NewStyles(opts)
-	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st), pickerInput: newStyledInput(st), promptInput: newStyledInput(st), editInput: newStyledInput(st)}
+	return Model{
+		project:     p,
+		filter:      DefaultFilter(),
+		styles:      st,
+		searchInput: newStyledInput(st),
+		pickerInput: newStyledInput(st),
+		promptInput: newStyledInput(st),
+		editInput:   newStyledInput(st),
+	}
 }
 
 // NewModelFromBase loads the named project from baseDir and returns a Model
@@ -293,9 +301,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchInput.Reset()
 				m.cursor = 0
 			default:
-				var cmd tea.Cmd
-				m.searchInput, cmd = m.searchInput.Update(msg)
-				_ = cmd
+				m.searchInput, _ = m.searchInput.Update(msg)
 			}
 			return m, nil
 		}
@@ -421,7 +427,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editOrig = doc.Items[idx].(store.TaskItem).Task.Title
 			m.editInput.Reset()
 			m.editInput.SetValue(m.editOrig)
-			m.editInput.CursorEnd()
 			m.editInput.Focus()
 			return m, nil
 		default:
@@ -620,7 +625,6 @@ func today() string {
 	return time.Now().Format("2006-01-02")
 }
 
-// updatePrompt handles a keystroke while the new-task prompt is active.
 func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc, tea.KeyCtrlC:
@@ -635,14 +639,13 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 		m.promptInput.Reset()
 		m.promptAbove = false
 	default:
-		var cmd tea.Cmd
-		m.promptInput, cmd = m.promptInput.Update(msg)
-		_ = cmd
+		// Static cursor: textinput.Update only emits a non-nil Cmd for
+		// clipboard paste, which himo doesn't wire through.
+		m.promptInput, _ = m.promptInput.Update(msg)
 	}
 	return m
 }
 
-// updateEdit handles a keystroke while inline title edit is active.
 func (m Model) updateEdit(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc, tea.KeyCtrlC:
@@ -650,9 +653,7 @@ func (m Model) updateEdit(msg tea.KeyMsg) Model {
 	case tea.KeyEnter:
 		m.commitEdit()
 	default:
-		var cmd tea.Cmd
-		m.editInput, cmd = m.editInput.Update(msg)
-		_ = cmd
+		m.editInput, _ = m.editInput.Update(msg)
 	}
 	return m
 }
@@ -800,7 +801,6 @@ func (m Model) filteredProjects() []string {
 	return out
 }
 
-// updatePicker handles keystrokes while the project picker is open.
 func (m Model) updatePicker(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc:
@@ -833,9 +833,7 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 		}
 	default:
 		before := m.pickerInput.Value()
-		var cmd tea.Cmd
-		m.pickerInput, cmd = m.pickerInput.Update(msg)
-		_ = cmd
+		m.pickerInput, _ = m.pickerInput.Update(msg)
 		if m.pickerInput.Value() != before {
 			m.pickerCursor = 0
 		}

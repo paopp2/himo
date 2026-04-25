@@ -159,9 +159,9 @@ func renderView(m Model) string {
 		Mode:        m.currentMode(),
 		Width:       width,
 		SearchBuf:   m.searchInput.View(),
-		PromptBuf:   m.promptInput.Value(),
+		PromptBuf:   m.promptInput.View(),
 		PromptAbove: m.promptAbove,
-		EditBuf:     m.editInput.Value(),
+		EditBuf:     m.editInput.View(),
 		DeleteTitle: deleteTitle(m, tasks),
 		Banner:      m.banner,
 	})
