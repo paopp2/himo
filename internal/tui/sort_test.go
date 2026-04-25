@@ -57,17 +57,21 @@ func TestStatusSortRank_attentionFirst(t *testing.T) {
 func sortFixtureProject(t *testing.T) *store.Project {
 	t.Helper()
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "active.md"),
-		[]byte("- [ ] pen\n- [/] act\n- [!] blk\n"), 0o644)
-	os.WriteFile(filepath.Join(dir, "backlog.md"),
-		[]byte("- bak\n"), 0o644)
-	os.WriteFile(filepath.Join(dir, "done.md"),
-		[]byte("## 2026-01-01\n- [x] don\n- [-] can\n"), 0o644)
+	writeFixture(t, filepath.Join(dir, "active.md"), "- [ ] pen\n- [/] act\n- [!] blk\n")
+	writeFixture(t, filepath.Join(dir, "backlog.md"), "- bak\n")
+	writeFixture(t, filepath.Join(dir, "done.md"), "## 2026-01-01\n- [x] don\n- [-] can\n")
 	p, err := store.LoadProject(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return p
+}
+
+func writeFixture(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestVisibleTasks_SortNaturalUnchanged(t *testing.T) {
@@ -85,6 +89,18 @@ func TestVisibleTasks_SortStatusReordersByRank(t *testing.T) {
 	got := titles(m.visibleTasks())
 	want := []string{"act", "blk", "pen", "bak", "don", "can"}
 	assertSequence(t, "SortStatus", got, want)
+}
+
+// A single-status filter narrows to one rank class, so the comparator has
+// nothing to reorder. Pinning identical results in both modes guards
+// against future comparator changes that would diverge here.
+func TestVisibleTasks_SortStatus_RespectsFilter(t *testing.T) {
+	natural := NewModel(sortFixtureProject(t))
+	natural.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	status := NewModel(sortFixtureProject(t))
+	status.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	status.sort = SortStatus
+	assertSequence(t, "single-status filter", titles(status.visibleTasks()), titles(natural.visibleTasks()))
 }
 
 func assertSequence(t *testing.T, label string, got, want []string) {
@@ -106,11 +122,12 @@ func sortFixtureMultiProject(t *testing.T) string {
 	t.Helper()
 	base := t.TempDir()
 	for _, name := range []string{"alpha", "bravo"} {
-		os.MkdirAll(filepath.Join(base, name), 0o755)
-		os.WriteFile(filepath.Join(base, name, "active.md"),
-			[]byte("- [/] "+name+"-act\n"), 0o644)
-		os.WriteFile(filepath.Join(base, name, "done.md"),
-			[]byte("## 2026-01-01\n- [x] "+name+"-don\n"), 0o644)
+		dir := filepath.Join(base, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		writeFixture(t, filepath.Join(dir, "active.md"), "- [/] "+name+"-act\n")
+		writeFixture(t, filepath.Join(dir, "done.md"), "## 2026-01-01\n- [x] "+name+"-don\n")
 	}
 	return base
 }
