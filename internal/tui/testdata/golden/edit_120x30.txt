@@ -2,7 +2,7 @@
 [`] Default  [1] Backlog 0  [2] Pending 1  [3] Active 1  [4] Blocked 0  [5] Done 0  [6] Cancelled 0  [0] All
 
 ╭──────────────────────────────────────────────────────────────────────╮  ╭────────────────────────────────────────────╮
-│▌ ○ Buy gro█                                                          │  │○ Buy groceries                             │
+│▌ ○ Buy gro                                                           │  │○ Buy groceries                             │
 │  ● Write design                                                      │  │                                            │
 │                                                                      │  │No notes yet.                               │
 │                                                                      │  │Press Enter to open this task in your       │
@@ -27,4 +27,4 @@
 │                                                                      │  │                                            │
 │                                                                      │  │                                            │
 ╰──────────────────────────────────────────────────────────────────────╯  ╰────────────────────────────────────────────╯
- EDIT   Edit > Buy gro█                                                                        Enter apply  Esc cancel
+ EDIT   Edit > Buy gro                                                                         Enter apply  Esc cancel

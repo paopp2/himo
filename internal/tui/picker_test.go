@@ -50,6 +50,24 @@ func TestPicker_escClosesWithoutSwitch(t *testing.T) {
 	}
 }
 
+func TestPicker_ctrlWDeletesLastWord(t *testing.T) {
+	base := twoProjectBase(t)
+	m, err := NewModelFromBase(base, "work", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	for _, r := range "two words" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlW})
+	got := cur.(Model).pickerInput.Value()
+	if got != "two " {
+		t.Errorf("after Ctrl+W, pickerInput.Value() = %q, want %q", got, "two ")
+	}
+}
+
 func TestAllProjects_aggregates(t *testing.T) {
 	base := twoProjectBase(t)
 	m, err := NewModelFromBase(base, "work", StyleOptions{})

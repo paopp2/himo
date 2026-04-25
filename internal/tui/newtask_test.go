@@ -71,12 +71,26 @@ func TestNewTask_ctrlCCancelsPrompt(t *testing.T) {
 	if final.(Model).prompting {
 		t.Error("Ctrl+C did not cancel prompt; prompting still true")
 	}
-	if final.(Model).promptBuf != "" {
-		t.Errorf("promptBuf after Ctrl+C = %q, want empty", final.(Model).promptBuf)
+	if got := final.(Model).promptInput.Value(); got != "" {
+		t.Errorf("promptInput.Value() after Ctrl+C = %q, want empty", got)
 	}
 	for _, task := range final.(Model).project.AllTasks() {
 		if task.Title == "junk" {
 			t.Errorf("Ctrl+C should not have committed buffer; found task %q", task.Title)
 		}
+	}
+}
+
+func TestNewTask_ctrlWDeletesLastWord(t *testing.T) {
+	m := NewModel(testProject(t))
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	for _, r := range "two words" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlW})
+	got := cur.(Model).promptInput.Value()
+	if got != "two " {
+		t.Errorf("after Ctrl+W, promptInput.Value() = %q, want %q", got, "two ")
 	}
 }

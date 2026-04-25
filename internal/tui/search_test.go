@@ -45,3 +45,17 @@ func titles(ts []model.Task) []string {
 	}
 	return out
 }
+
+func TestSearch_ctrlWDeletesLastWord(t *testing.T) {
+	m := NewModel(testProject(t))
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	for _, r := range "two words" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlW})
+	got := cur.(Model).searchInput.Value()
+	if got != "two " {
+		t.Errorf("after Ctrl+W, searchInput.Value() = %q, want %q", got, "two ")
+	}
+}

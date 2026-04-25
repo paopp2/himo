@@ -38,7 +38,7 @@ func TestRenderView_goldenEdit(t *testing.T) {
 	m.width, m.height = 120, 30
 	m.styles = testStyles(t)
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = typeString(t, m, "Buy gro")

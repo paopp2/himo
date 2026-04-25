@@ -158,10 +158,10 @@ func renderView(m Model) string {
 	hint := renderHintBar(m.styles, hintInput{
 		Mode:        m.currentMode(),
 		Width:       width,
-		SearchBuf:   m.searchBuf,
-		PromptBuf:   m.promptBuf,
+		SearchBuf:   m.searchInput.View(),
+		PromptBuf:   m.promptInput.View(),
 		PromptAbove: m.promptAbove,
-		EditBuf:     m.editBuf,
+		EditBuf:     m.editInput.View(),
 		DeleteTitle: deleteTitle(m, tasks),
 		Banner:      m.banner,
 	})
@@ -221,7 +221,7 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 		}
 		if i == m.cursor && m.editing {
 			opts.Editing = true
-			opts.EditBuf = m.editBuf
+			opts.EditView = m.editInput.View()
 		}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
@@ -246,7 +246,7 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 				ghostIdx = len(rows)
 			}
 		}
-		ghost := renderGhostRow(m.styles, m.promptBuf, width-2)
+		ghost := renderGhostRow(m.styles, m.promptInput.View(), width-2)
 		rows = append(rows[:ghostIdx], append([]string{ghost}, rows[ghostIdx:]...)...)
 		cursorRow = ghostIdx
 	}
@@ -278,10 +278,10 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	return m.styles.PaneBorderFocused.Width(width - 2).Height(height - 2).Render(visible)
 }
 
-func renderGhostRow(st *Styles, buf string, width int) string {
+func renderGhostRow(st *Styles, body string, width int) string {
 	bar := st.CursorBar.Render("▌")
 	marker := st.Accent.Render("+")
-	left := bar + " " + marker + " " + buf + inputCursor(st)
+	left := bar + " " + marker + " " + body
 	padding := width - lipgloss.Width(left)
 	if padding < 0 {
 		padding = 0
@@ -290,19 +290,13 @@ func renderGhostRow(st *Styles, buf string, width int) string {
 	return st.PaintCursorRow(row)
 }
 
-// inputCursor returns the styled block glyph used as the text-input caret
-// in the ghost row, the prompt, and search.
-func inputCursor(st *Styles) string {
-	return st.Accent.Render("█")
-}
-
 type taskLineInput struct {
 	Width       int
 	Cursor      bool
 	AllProjects bool
 	ProjectName string
 	Editing     bool
-	EditBuf     string
+	EditView    string
 }
 
 // renderTaskLine returns a single styled row:
@@ -345,7 +339,7 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	}
 	var title string
 	if o.Editing {
-		title = st.Base.Render(o.EditBuf) + inputCursor(st)
+		title = o.EditView
 	} else {
 		title = st.TitleStyle(t.Status).Render(runewidth.Truncate(t.Title, titleMax, "…"))
 	}
@@ -375,7 +369,7 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 
 func renderPickerBody(m Model) string {
 	var b strings.Builder
-	b.WriteString("/ " + m.pickerFilter + "_\n\n")
+	b.WriteString("/ " + m.pickerInput.View() + "\n\n")
 	for i, n := range m.filteredProjects() {
 		prefix := "  "
 		if i == m.pickerCursor {

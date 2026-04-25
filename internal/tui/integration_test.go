@@ -54,10 +54,6 @@ func TestIntegration_newTaskInBacklog(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
 	for _, r := range "Refactor auth" {
-		if r == ' ' {
-			tm.Send(tea.KeyMsg{Type: tea.KeySpace})
-			continue
-		}
 		tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})

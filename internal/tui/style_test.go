@@ -69,3 +69,22 @@ func TestStyles_trueColor_emitsColorEscape(t *testing.T) {
 		t.Errorf("true-color accent render produced no escape: %q", out)
 	}
 }
+
+// TestStyledInput_caretRendersAsReverseBlock pins the visible-caret invariant:
+// after Focus, the textinput's cursor cell must emit reverse-video so the
+// accent foreground reads as a background block. ASCII-profile golden tests
+// can't catch this because both visible and invisible states render as a bare
+// space; this exercises the TrueColor path where the difference shows up.
+func TestStyledInput_caretRendersAsReverseBlock(t *testing.T) {
+	r := lipgloss.NewRenderer(nil, termenv.WithProfile(termenv.TrueColor))
+	r.SetColorProfile(termenv.TrueColor)
+	st := NewStylesWithRenderer(r, StyleOptions{})
+	ti := newStyledInput(st)
+	ti.SetValue("x")
+	ti.CursorEnd()
+	ti.Focus()
+	out := ti.View()
+	if !strings.Contains(out, "\x1b[7m") && !strings.Contains(out, "\x1b[7;") {
+		t.Errorf("focused caret missing reverse-video escape: %q", out)
+	}
+}

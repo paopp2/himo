@@ -8,6 +8,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/textinput"
 
 	"github.com/paopp2/himo/internal/model"
 	"github.com/paopp2/himo/internal/store"
@@ -96,19 +98,19 @@ type Model struct {
 	projects          []string
 	hidePreview       bool
 	prompting         bool
-	promptBuf         string
+	promptInput       textinput.Model
 	promptAbove       bool
 	confirmingDelete  bool
 	banner            string
 	searching         bool
-	searchBuf         string
+	searchInput       textinput.Model
 	searchActive      string
 	showingHelp       bool
 	pickerOpen        bool
 	pickerCursor      int
-	pickerFilter      string
+	pickerInput       textinput.Model
 	editing           bool
-	editBuf           string
+	editInput         textinput.Model
 	editOrig          string
 	allProjects       bool
 	allProjectsCache  []*store.Project
@@ -125,7 +127,16 @@ func NewModel(p *store.Project) Model {
 
 // NewModelWithOptions is like NewModel but takes style options.
 func NewModelWithOptions(p *store.Project, opts StyleOptions) Model {
-	return Model{project: p, filter: DefaultFilter(), styles: NewStyles(opts)}
+	st := NewStyles(opts)
+	return Model{
+		project:     p,
+		filter:      DefaultFilter(),
+		styles:      st,
+		searchInput: newStyledInput(st),
+		pickerInput: newStyledInput(st),
+		promptInput: newStyledInput(st),
+		editInput:   newStyledInput(st),
+	}
 }
 
 // NewModelFromBase loads the named project from baseDir and returns a Model
@@ -139,12 +150,17 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 	if err != nil {
 		return Model{}, err
 	}
+	st := NewStyles(opts)
 	return Model{
-		project:  p,
-		filter:   DefaultFilter(),
-		baseDir:  baseDir,
-		projects: projects,
-		styles:   NewStyles(opts),
+		project:     p,
+		filter:      DefaultFilter(),
+		baseDir:     baseDir,
+		projects:    projects,
+		styles:      st,
+		searchInput: newStyledInput(st),
+		pickerInput: newStyledInput(st),
+		promptInput: newStyledInput(st),
+		editInput:   newStyledInput(st),
 	}, nil
 }
 
@@ -278,20 +294,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyEsc:
 				m.searching = false
-				m.searchBuf = ""
+				m.searchInput.Reset()
 			case tea.KeyEnter:
-				m.searchActive = m.searchBuf
+				m.searchActive = m.searchInput.Value()
 				m.searching = false
-				m.searchBuf = ""
+				m.searchInput.Reset()
 				m.cursor = 0
-			case tea.KeyBackspace:
-				if len(m.searchBuf) > 0 {
-					m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-				}
-			case tea.KeyRunes:
-				m.searchBuf += string(msg.Runes)
-			case tea.KeySpace:
-				m.searchBuf += " "
+			default:
+				m.searchInput, _ = m.searchInput.Update(msg)
 			}
 			return m, nil
 		}
@@ -347,7 +357,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "P":
 			m.pickerOpen = true
 			m.pickerCursor = 0
-			m.pickerFilter = ""
+			m.pickerInput.Reset()
+			m.pickerInput.Focus()
 		case "A":
 			if m.allProjects {
 				m.exitAllProjects()
@@ -364,15 +375,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cycleStatus()
 		case "o":
 			m.prompting = true
-			m.promptBuf = ""
+			m.promptInput.Reset()
+			m.promptInput.Focus()
 			m.promptAbove = false
 		case "O":
 			m.prompting = true
-			m.promptBuf = ""
+			m.promptInput.Reset()
+			m.promptInput.Focus()
 			m.promptAbove = true
 		case "/":
 			m.searching = true
-			m.searchBuf = ""
+			m.searchInput.Reset()
+			m.searchInput.Focus()
 		case "d":
 			m.confirmingDelete = true
 		case "?":
@@ -411,7 +425,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.editing = true
 			m.editOrig = doc.Items[idx].(store.TaskItem).Task.Title
-			m.editBuf = m.editOrig
+			m.editInput.Reset()
+			m.editInput.SetValue(m.editOrig)
+			m.editInput.Focus()
 			return m, nil
 		default:
 			if s, ok := digitFilters[msg.String()]; ok {
@@ -609,54 +625,42 @@ func today() string {
 	return time.Now().Format("2006-01-02")
 }
 
-// updatePrompt handles a keystroke while the new-task prompt is active.
 func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc, tea.KeyCtrlC:
 		m.prompting = false
-		m.promptBuf = ""
+		m.promptInput.Reset()
 		m.promptAbove = false
 	case tea.KeyEnter:
-		if m.promptBuf != "" {
-			m.insertNewTask(m.promptBuf)
+		if v := m.promptInput.Value(); v != "" {
+			m.insertNewTask(v)
 		}
 		m.prompting = false
-		m.promptBuf = ""
+		m.promptInput.Reset()
 		m.promptAbove = false
-	case tea.KeyBackspace:
-		if len(m.promptBuf) > 0 {
-			m.promptBuf = m.promptBuf[:len(m.promptBuf)-1]
-		}
-	case tea.KeyRunes:
-		m.promptBuf += string(msg.Runes)
-	case tea.KeySpace:
-		m.promptBuf += " "
+	default:
+		// Static cursor: textinput.Update only emits a non-nil Cmd for
+		// clipboard paste, which himo doesn't wire through.
+		m.promptInput, _ = m.promptInput.Update(msg)
 	}
 	return m
 }
 
-// updateEdit handles a keystroke while inline title edit is active.
 func (m Model) updateEdit(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc, tea.KeyCtrlC:
 		m.clearEdit()
 	case tea.KeyEnter:
 		m.commitEdit()
-	case tea.KeyBackspace:
-		if len(m.editBuf) > 0 {
-			m.editBuf = m.editBuf[:len(m.editBuf)-1]
-		}
-	case tea.KeyRunes:
-		m.editBuf += string(msg.Runes)
-	case tea.KeySpace:
-		m.editBuf += " "
+	default:
+		m.editInput, _ = m.editInput.Update(msg)
 	}
 	return m
 }
 
 func (m *Model) clearEdit() {
 	m.editing = false
-	m.editBuf = ""
+	m.editInput.Reset()
 	m.editOrig = ""
 }
 
@@ -668,13 +672,14 @@ func (m *Model) commitEdit() {
 	if !ok {
 		return
 	}
-	if m.editBuf == "" || m.editBuf == m.editOrig {
+	v := m.editInput.Value()
+	if v == "" || v == m.editOrig {
 		return
 	}
 	m.pushUndo(proj)
 	old := doc.Items[idx].(store.TaskItem)
 	ti := old
-	ti.Task.Title = m.editBuf
+	ti.Task.Title = v
 	ti.RawLines[0] = store.RenderTaskLine(ti.Task)
 	doc.Items[idx] = ti
 	if err := m.saveWithBanner(proj, "edit"); err != nil {
@@ -751,6 +756,19 @@ func (m *Model) insertNewTask(title string) {
 	}
 }
 
+// newStyledInput returns a textinput with himo's static accent caret.
+// CursorStatic avoids wiring blink commands through Update; cursor.Focus
+// flips Blink to false on entry so View renders the cell as an
+// accent-bg reverse block in color terminals.
+func newStyledInput(st *Styles) textinput.Model {
+	ti := textinput.New()
+	ti.Prompt = ""
+	ti.CharLimit = 0
+	ti.Cursor.SetMode(cursor.CursorStatic)
+	ti.Cursor.Style = st.Accent
+	return ti
+}
+
 // insertAtSlice returns s with it inserted at idx.
 func insertAtSlice(s []store.Item, idx int, it store.Item) []store.Item {
 	s = append(s, nil)
@@ -767,12 +785,13 @@ func (m Model) isBacklogFilter() bool {
 		m.filter.Statuses[0] == model.StatusBacklog
 }
 
-// filteredProjects returns project names that contain pickerFilter (case-insensitive).
+// filteredProjects returns project names that contain the picker filter (case-insensitive).
 func (m Model) filteredProjects() []string {
-	if m.pickerFilter == "" {
+	filter := m.pickerInput.Value()
+	if filter == "" {
 		return m.projects
 	}
-	needle := strings.ToLower(m.pickerFilter)
+	needle := strings.ToLower(filter)
 	out := make([]string, 0, len(m.projects))
 	for _, n := range m.projects {
 		if strings.Contains(strings.ToLower(n), needle) {
@@ -782,12 +801,11 @@ func (m Model) filteredProjects() []string {
 	return out
 }
 
-// updatePicker handles keystrokes while the project picker is open.
 func (m Model) updatePicker(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc:
 		m.pickerOpen = false
-		m.pickerFilter = ""
+		m.pickerInput.Reset()
 		m.pickerCursor = 0
 		return m
 	case tea.KeyEnter:
@@ -802,7 +820,7 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 			}
 		}
 		m.pickerOpen = false
-		m.pickerFilter = ""
+		m.pickerInput.Reset()
 		m.pickerCursor = 0
 		return m
 	case tea.KeyUp:
@@ -813,17 +831,12 @@ func (m Model) updatePicker(msg tea.KeyMsg) Model {
 		if m.pickerCursor+1 < len(m.filteredProjects()) {
 			m.pickerCursor++
 		}
-	case tea.KeyBackspace:
-		if n := len(m.pickerFilter); n > 0 {
-			m.pickerFilter = m.pickerFilter[:n-1]
+	default:
+		before := m.pickerInput.Value()
+		m.pickerInput, _ = m.pickerInput.Update(msg)
+		if m.pickerInput.Value() != before {
 			m.pickerCursor = 0
 		}
-	case tea.KeyRunes:
-		m.pickerFilter += string(msg.Runes)
-		m.pickerCursor = 0
-	case tea.KeySpace:
-		m.pickerFilter += " "
-		m.pickerCursor = 0
 	}
 	return m
 }
