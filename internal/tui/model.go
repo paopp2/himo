@@ -106,6 +106,7 @@ type Model struct {
 	searching         bool
 	searchInput       textinput.Model
 	searchActive      string
+	preSearchCursor   int
 	showingHelp       bool
 	pickerOpen        bool
 	pickerCursor      int
@@ -310,6 +311,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyEsc:
 				m.searching = false
 				m.searchInput.Reset()
+				m.cursor = m.preSearchCursor
 			case tea.KeyEnter:
 				m.searchActive = m.searchInput.Value()
 				m.searching = false
@@ -406,6 +408,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.promptInput.Focus()
 			m.promptAbove = true
 		case "/":
+			m.preSearchCursor = m.cursor
 			m.searching = true
 			m.searchInput.Reset()
 			m.searchInput.Focus()
