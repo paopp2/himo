@@ -161,7 +161,7 @@ func renderView(m Model) string {
 		SearchBuf:   m.searchInput.View(),
 		PromptBuf:   m.promptInput.Value(),
 		PromptAbove: m.promptAbove,
-		EditBuf:     m.editBuf,
+		EditBuf:     m.editInput.Value(),
 		DeleteTitle: deleteTitle(m, tasks),
 		Banner:      m.banner,
 	})
@@ -221,7 +221,7 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 		}
 		if i == m.cursor && m.editing {
 			opts.Editing = true
-			opts.EditBuf = m.editBuf
+			opts.EditView = m.editInput.View()
 		}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
@@ -302,7 +302,7 @@ type taskLineInput struct {
 	AllProjects bool
 	ProjectName string
 	Editing     bool
-	EditBuf     string
+	EditView    string
 }
 
 // renderTaskLine returns a single styled row:
@@ -345,7 +345,7 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	}
 	var title string
 	if o.Editing {
-		title = st.Base.Render(o.EditBuf) + inputCursor(st)
+		title = o.EditView
 	} else {
 		title = st.TitleStyle(t.Status).Render(runewidth.Truncate(t.Title, titleMax, "…"))
 	}

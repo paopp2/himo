@@ -50,8 +50,8 @@ func TestEdit_e_entersEditMode(t *testing.T) {
 	if m.currentMode() != ModeEdit {
 		t.Errorf("currentMode = %v, want ModeEdit", m.currentMode())
 	}
-	if m.editBuf != original {
-		t.Errorf("editBuf = %q, want %q", m.editBuf, original)
+	if got := m.editInput.Value(); got != original {
+		t.Errorf("editInput.Value() = %q, want %q", got, original)
 	}
 	if m.editOrig != original {
 		t.Errorf("editOrig = %q, want %q", m.editOrig, original)
@@ -61,7 +61,7 @@ func TestEdit_e_entersEditMode(t *testing.T) {
 func TestEdit_typesAndCommits(t *testing.T) {
 	m := NewModel(testProject(t))
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = typeString(t, m, "Renamed")
@@ -120,7 +120,7 @@ func TestEdit_emptyBufferIsCancel(t *testing.T) {
 	m := NewModel(testProject(t))
 	original := firstTaskTitle(t, m)
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = keypress(t, m, tea.KeyMsg{Type: tea.KeyEnter})
@@ -165,7 +165,7 @@ func TestEdit_preservesStatus(t *testing.T) {
 		t.Fatal("expected cursor on a done task")
 	}
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = typeString(t, m, "Edited")
@@ -204,7 +204,7 @@ func TestEdit_preservesNotes(t *testing.T) {
 	}
 	m := NewModel(proj)
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = typeString(t, m, "Renamed")
@@ -271,7 +271,7 @@ func TestEdit_allProjectsTargetsCorrectProject(t *testing.T) {
 		m = keypress(t, m, keyRune('j'))
 	}
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = typeString(t, m, "B-edited")
@@ -304,7 +304,7 @@ func TestEdit_undoRevertsTitleChange(t *testing.T) {
 	m := NewModel(testProject(t))
 	original := firstTaskTitle(t, m)
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = typeString(t, m, "TempTitle")
@@ -315,6 +315,19 @@ func TestEdit_undoRevertsTitleChange(t *testing.T) {
 	m = keypress(t, m, keyRune('u'))
 	if got := firstTaskTitle(t, m); got != original {
 		t.Errorf("post-undo title = %q, want %q", got, original)
+	}
+}
+
+func TestEdit_ctrlWDeletesLastWord(t *testing.T) {
+	m := NewModel(testProject(t))
+	m = keypress(t, m, keyRune('e'))
+	for range m.editInput.Value() {
+		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
+	}
+	m = typeString(t, m, "two words")
+	m = keypress(t, m, tea.KeyMsg{Type: tea.KeyCtrlW})
+	if got := m.editInput.Value(); got != "two " {
+		t.Errorf("after Ctrl+W, editInput.Value() = %q, want %q", got, "two ")
 	}
 }
 
@@ -330,7 +343,7 @@ func TestEdit_saveConflictRollsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	m = keypress(t, m, keyRune('e'))
-	for range m.editBuf {
+	for range m.editInput.Value() {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
 	m = typeString(t, m, "Renamed")

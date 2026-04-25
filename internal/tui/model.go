@@ -110,7 +110,7 @@ type Model struct {
 	pickerCursor      int
 	pickerInput       textinput.Model
 	editing           bool
-	editBuf           string
+	editInput         textinput.Model
 	editOrig          string
 	allProjects       bool
 	allProjectsCache  []*store.Project
@@ -128,7 +128,7 @@ func NewModel(p *store.Project) Model {
 // NewModelWithOptions is like NewModel but takes style options.
 func NewModelWithOptions(p *store.Project, opts StyleOptions) Model {
 	st := NewStyles(opts)
-	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st), pickerInput: newStyledInput(st), promptInput: newStyledInput(st)}
+	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st), pickerInput: newStyledInput(st), promptInput: newStyledInput(st), editInput: newStyledInput(st)}
 }
 
 // NewModelFromBase loads the named project from baseDir and returns a Model
@@ -152,6 +152,7 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 		searchInput: newStyledInput(st),
 		pickerInput: newStyledInput(st),
 		promptInput: newStyledInput(st),
+		editInput:   newStyledInput(st),
 	}, nil
 }
 
@@ -418,7 +419,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.editing = true
 			m.editOrig = doc.Items[idx].(store.TaskItem).Task.Title
-			m.editBuf = m.editOrig
+			m.editInput.Reset()
+			m.editInput.SetValue(m.editOrig)
+			m.editInput.CursorEnd()
+			m.editInput.Focus()
 			return m, nil
 		default:
 			if s, ok := digitFilters[msg.String()]; ok {
@@ -645,21 +649,17 @@ func (m Model) updateEdit(msg tea.KeyMsg) Model {
 		m.clearEdit()
 	case tea.KeyEnter:
 		m.commitEdit()
-	case tea.KeyBackspace:
-		if len(m.editBuf) > 0 {
-			m.editBuf = m.editBuf[:len(m.editBuf)-1]
-		}
-	case tea.KeyRunes:
-		m.editBuf += string(msg.Runes)
-	case tea.KeySpace:
-		m.editBuf += " "
+	default:
+		var cmd tea.Cmd
+		m.editInput, cmd = m.editInput.Update(msg)
+		_ = cmd
 	}
 	return m
 }
 
 func (m *Model) clearEdit() {
 	m.editing = false
-	m.editBuf = ""
+	m.editInput.Reset()
 	m.editOrig = ""
 }
 
@@ -671,13 +671,14 @@ func (m *Model) commitEdit() {
 	if !ok {
 		return
 	}
-	if m.editBuf == "" || m.editBuf == m.editOrig {
+	v := m.editInput.Value()
+	if v == "" || v == m.editOrig {
 		return
 	}
 	m.pushUndo(proj)
 	old := doc.Items[idx].(store.TaskItem)
 	ti := old
-	ti.Task.Title = m.editBuf
+	ti.Task.Title = v
 	ti.RawLines[0] = store.RenderTaskLine(ti.Task)
 	doc.Items[idx] = ti
 	if err := m.saveWithBanner(proj, "edit"); err != nil {
