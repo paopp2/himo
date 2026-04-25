@@ -107,4 +107,4 @@ preview_pane = true        # optional
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE)
