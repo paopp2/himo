@@ -58,3 +58,44 @@ func TestIntegration_newTaskInBacklog(t *testing.T) {
 		t.Errorf("backlog.md missing new task:\n%s", string(data))
 	}
 }
+
+func TestSearch_endToEndSession(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+
+	cur := tea.Model(m)
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	if !cur.(Model).searching {
+		t.Fatal("expected searching=true after '/'")
+	}
+
+	for _, r := range "design" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	if got := cur.(Model).cursor; got != 1 {
+		t.Fatalf("incsearch cursor = %d, want 1", got)
+	}
+
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cur.(Model).searching {
+		t.Fatal("expected searching=false after Enter")
+	}
+	if got := cur.(Model).searchActive; got != "design" {
+		t.Fatalf("searchActive = %q, want 'design'", got)
+	}
+
+	// 'n' wraps because "design" matches only the second task.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("n with single match: cursor = %d, want 1 (stays)", got)
+	}
+	if got := cur.(Model).banner; got != "search hit BOTTOM, continuing at TOP" {
+		t.Errorf("banner = %q", got)
+	}
+
+	// Esc in normal mode clears searchActive.
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if got := cur.(Model).searchActive; got != "" {
+		t.Errorf("searchActive after Esc = %q, want empty", got)
+	}
+}
