@@ -8,6 +8,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/textinput"
 
 	"github.com/paopp2/himo/internal/model"
 	"github.com/paopp2/himo/internal/store"
@@ -101,7 +103,7 @@ type Model struct {
 	confirmingDelete  bool
 	banner            string
 	searching         bool
-	searchBuf         string
+	searchInput       textinput.Model
 	searchActive      string
 	showingHelp       bool
 	pickerOpen        bool
@@ -125,7 +127,8 @@ func NewModel(p *store.Project) Model {
 
 // NewModelWithOptions is like NewModel but takes style options.
 func NewModelWithOptions(p *store.Project, opts StyleOptions) Model {
-	return Model{project: p, filter: DefaultFilter(), styles: NewStyles(opts)}
+	st := NewStyles(opts)
+	return Model{project: p, filter: DefaultFilter(), styles: st, searchInput: newStyledInput(st)}
 }
 
 // NewModelFromBase loads the named project from baseDir and returns a Model
@@ -139,12 +142,14 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 	if err != nil {
 		return Model{}, err
 	}
+	st := NewStyles(opts)
 	return Model{
-		project:  p,
-		filter:   DefaultFilter(),
-		baseDir:  baseDir,
-		projects: projects,
-		styles:   NewStyles(opts),
+		project:     p,
+		filter:      DefaultFilter(),
+		baseDir:     baseDir,
+		projects:    projects,
+		styles:      st,
+		searchInput: newStyledInput(st),
 	}, nil
 }
 
@@ -278,20 +283,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyEsc:
 				m.searching = false
-				m.searchBuf = ""
+				m.searchInput.Reset()
 			case tea.KeyEnter:
-				m.searchActive = m.searchBuf
+				m.searchActive = m.searchInput.Value()
 				m.searching = false
-				m.searchBuf = ""
+				m.searchInput.Reset()
 				m.cursor = 0
-			case tea.KeyBackspace:
-				if len(m.searchBuf) > 0 {
-					m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-				}
-			case tea.KeyRunes:
-				m.searchBuf += string(msg.Runes)
-			case tea.KeySpace:
-				m.searchBuf += " "
+			default:
+				var cmd tea.Cmd
+				m.searchInput, cmd = m.searchInput.Update(msg)
+				_ = cmd
 			}
 			return m, nil
 		}
@@ -372,7 +373,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.promptAbove = true
 		case "/":
 			m.searching = true
-			m.searchBuf = ""
+			m.searchInput.Reset()
+			m.searchInput.Focus()
 		case "d":
 			m.confirmingDelete = true
 		case "?":
@@ -749,6 +751,19 @@ func (m *Model) insertNewTask(title string) {
 	if !m.promptAbove && haveCursor && m.cursor+1 < len(m.visibleTasks()) {
 		m.cursor++
 	}
+}
+
+// newStyledInput builds a textinput configured to match himo's accent-block
+// caret, with no prompt (surrounding chrome is rendered separately) and no
+// character cap. Cursor blink is disabled so we don't have to wire blink
+// commands into Update.
+func newStyledInput(st *Styles) textinput.Model {
+	ti := textinput.New()
+	ti.Prompt = ""
+	ti.CharLimit = 0
+	ti.Cursor.SetMode(cursor.CursorStatic)
+	ti.Cursor.Style = st.Accent
+	return ti
 }
 
 // insertAtSlice returns s with it inserted at idx.

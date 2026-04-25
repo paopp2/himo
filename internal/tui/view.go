@@ -158,7 +158,7 @@ func renderView(m Model) string {
 	hint := renderHintBar(m.styles, hintInput{
 		Mode:        m.currentMode(),
 		Width:       width,
-		SearchBuf:   m.searchBuf,
+		SearchBuf:   m.searchInput.View(),
 		PromptBuf:   m.promptBuf,
 		PromptAbove: m.promptAbove,
 		EditBuf:     m.editBuf,

@@ -71,7 +71,7 @@ func middleHints(st *Styles, in hintInput) string {
 			{"o", "new"}, {"/", "search"},
 		})
 	case ModeSearch:
-		return st.Muted.Render("/ "+in.SearchBuf) + inputCursor(st)
+		return st.Muted.Render("/ ") + in.SearchBuf
 	case ModePrompt:
 		label := "New task"
 		if in.PromptAbove {
