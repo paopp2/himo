@@ -302,3 +302,56 @@ func TestRenderTaskLine_noQueryNoHighlight(t *testing.T) {
 		t.Errorf("unexpected SearchHighlight code in row: %q", row)
 	}
 }
+
+func TestRenderTaskLine_cursorRowPreservesHighlight(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       60,
+		Cursor:      true,
+		SearchQuery: "groc",
+	})
+	plain := stripANSI(row)
+	if !strings.Contains(plain, "Buy groceries") {
+		t.Fatalf("rendered cursor row missing title: %q", plain)
+	}
+
+	// Highlight open-code is still present somewhere in the row.
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if hlOpen == "" {
+		t.Fatalf("expected SearchHighlight to produce ANSI; got empty open-code")
+	}
+	if !strings.Contains(row, hlOpen) {
+		t.Errorf("cursor row missing highlight open-code; PaintCursorRow may have stripped it\nrow: %q", row)
+	}
+
+	// Cursor BG open-code re-engages after every reset (PaintCursorRow's
+	// invariant). Extract the open/closer markers from CursorRowBG.
+	marker := st.CursorRowBG.Render("\x00")
+	parts := strings.SplitN(marker, "\x00", 2)
+	if len(parts) != 2 {
+		t.Fatalf("CursorRowBG.Render did not produce a splittable marker")
+	}
+	bgOpen, bgClose := parts[0], parts[1]
+	if bgOpen == "" {
+		t.Fatalf("expected non-empty cursor BG open-code")
+	}
+	// Every internal bgClose (i.e., not the trailing one) should be
+	// immediately followed by bgOpen. Strip the final trailing close, then
+	// verify every remaining occurrence is followed by an open.
+	body := strings.TrimSuffix(row, bgClose)
+	idx := 0
+	for {
+		j := strings.Index(body[idx:], bgClose)
+		if j < 0 {
+			break
+		}
+		after := idx + j + len(bgClose)
+		if !strings.HasPrefix(body[after:], bgOpen) {
+			t.Errorf("internal bgClose at offset %d not followed by bgOpen — cursor BG drops mid-row\nrow: %q", after, row)
+			break
+		}
+		idx = after
+	}
+}
