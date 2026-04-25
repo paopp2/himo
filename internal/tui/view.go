@@ -160,6 +160,7 @@ func renderView(m Model) string {
 		SearchBuf:   m.searchBuf,
 		PromptBuf:   m.promptBuf,
 		PromptAbove: m.promptAbove,
+		EditBuf:     m.editBuf,
 		DeleteTitle: deleteTitle(m, tasks),
 		Banner:      m.banner,
 	})

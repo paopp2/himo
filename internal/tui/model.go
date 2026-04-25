@@ -107,6 +107,9 @@ type Model struct {
 	pickerOpen        bool
 	pickerCursor      int
 	pickerFilter      string
+	editing           bool
+	editBuf           string
+	editOrig          string
 	allProjects       bool
 	allProjectsCache  []*store.Project
 	editingProjectDir string
@@ -194,6 +197,8 @@ func (m Model) currentMode() Mode {
 		return ModeDelete
 	case m.pickerOpen:
 		return ModePicker
+	case m.editing:
+		return ModeEdit
 	}
 	return ModeNormal
 }
