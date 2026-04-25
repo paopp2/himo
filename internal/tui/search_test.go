@@ -109,6 +109,23 @@ func TestSearch_incsearchEmptyBufferRestoresCursor(t *testing.T) {
 	}
 }
 
+func TestSearch_enterCommitsAtIncsearchCursor(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	for _, r := range "design" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("after Enter, cursor = %d, want 1", got)
+	}
+	if got := cur.(Model).searchActive; got != "design" {
+		t.Errorf("searchActive = %q, want %q", got, "design")
+	}
+}
+
 func TestSearch_ctrlWDeletesLastWord(t *testing.T) {
 	m := NewModel(testProject(t))
 	var cur tea.Model = m

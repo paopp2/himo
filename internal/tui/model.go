@@ -316,7 +316,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchActive = m.searchInput.Value()
 				m.searching = false
 				m.searchInput.Reset()
-				m.cursor = 0
 			default:
 				before := m.searchInput.Value()
 				m.searchInput, _ = m.searchInput.Update(msg)
