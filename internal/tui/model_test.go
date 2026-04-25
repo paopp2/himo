@@ -87,6 +87,11 @@ func TestCurrentMode(t *testing.T) {
 		t.Errorf("pickerOpen=true mode = %v, want PICKER", m.currentMode())
 	}
 	m.pickerOpen = false
+	m.editing = true
+	if m.currentMode() != ModeEdit {
+		t.Errorf("editing=true mode = %v, want EDIT", m.currentMode())
+	}
+	m.editing = false
 	m.showingHelp = true
 	if m.currentMode() != ModeHelp {
 		t.Errorf("showingHelp=true mode = %v, want HELP", m.currentMode())

@@ -15,6 +15,7 @@ const (
 	ModePrompt
 	ModeDelete
 	ModePicker
+	ModeEdit
 	ModeHelp
 )
 
@@ -24,6 +25,7 @@ var modeNames = [...]string{
 	ModePrompt: "PROMPT",
 	ModeDelete: "DELETE?",
 	ModePicker: "PICKER",
+	ModeEdit:   "EDIT",
 	ModeHelp:   "HELP",
 }
 
@@ -40,6 +42,7 @@ type hintInput struct {
 	SearchBuf   string
 	PromptBuf   string
 	PromptAbove bool
+	EditBuf     string
 	DeleteTitle string
 	Banner      string
 }
@@ -75,6 +78,8 @@ func middleHints(st *Styles, in hintInput) string {
 			label = "New task (above)"
 		}
 		return st.Muted.Render(label+" > ") + in.PromptBuf + inputCursor(st)
+	case ModeEdit:
+		return st.Muted.Render("Edit > ") + in.EditBuf + inputCursor(st)
 	case ModeDelete:
 		return st.Err.Render("Delete: ") + in.DeleteTitle
 	case ModePicker:
@@ -93,7 +98,7 @@ func metaHints(st *Styles, in hintInput) string {
 	switch in.Mode {
 	case ModeNormal, ModeHelp:
 		parts = append(parts, st.Muted.Render("? help"))
-	case ModeSearch, ModePrompt, ModePicker:
+	case ModeSearch, ModePrompt, ModePicker, ModeEdit:
 		parts = append(parts, st.Muted.Render("Enter apply  Esc cancel"))
 	case ModeDelete:
 		parts = append(parts, st.Muted.Render("y delete  n cancel"))

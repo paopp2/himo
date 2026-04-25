@@ -107,21 +107,3 @@ func (m Model) openEditor(ec editorCmd) tea.Cmd {
 
 type editorReturnedMsg struct{ err error }
 
-// fileForFilter maps the filter to the file `e` should open within proj.
-// Returns an error when the filter is "all" or spans multiple target files
-// (ambiguous; user picks 1-6 first).
-func fileForFilter(f Filter, proj *store.Project) (string, error) {
-	if f.All {
-		return "", fmt.Errorf("choose a filter first (1-6) to pick a file")
-	}
-	if len(f.Statuses) == 0 {
-		return "", fmt.Errorf("no filter active")
-	}
-	target := store.TargetFile(f.Statuses[0])
-	for _, s := range f.Statuses[1:] {
-		if store.TargetFile(s) != target {
-			return "", fmt.Errorf("filter spans multiple files; narrow with 1-6")
-		}
-	}
-	return filepath.Join(proj.Dir, target.String()), nil
-}

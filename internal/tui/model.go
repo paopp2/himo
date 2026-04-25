@@ -107,6 +107,9 @@ type Model struct {
 	pickerOpen        bool
 	pickerCursor      int
 	pickerFilter      string
+	editing           bool
+	editBuf           string
+	editOrig          string
 	allProjects       bool
 	allProjectsCache  []*store.Project
 	editingProjectDir string
@@ -194,6 +197,8 @@ func (m Model) currentMode() Mode {
 		return ModeDelete
 	case m.pickerOpen:
 		return ModePicker
+	case m.editing:
+		return ModeEdit
 	}
 	return ModeNormal
 }
@@ -265,6 +270,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.pickerOpen {
 			return m.updatePicker(msg), nil
+		}
+		if m.editing {
+			return m.updateEdit(msg), nil
 		}
 		if m.searching {
 			switch msg.Type {
@@ -397,19 +405,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				func(err error) tea.Msg { return urlOpenedMsg{err: err} },
 			)
 		case "e":
-			target := m.project
-			if m.allProjects {
-				if p, _, _, ok := m.currentTaskItem(); ok {
-					target = p
-				}
-			}
-			path, err := fileForFilter(m.filter, target)
-			if err != nil {
-				m.banner = err.Error()
+			_, doc, idx, ok := m.currentTaskItem()
+			if !ok {
 				return m, nil
 			}
-			m.editingProjectDir = target.Dir
-			return m, m.openEditor(editorCmd{Path: path, Line: 0})
+			m.editing = true
+			m.editOrig = doc.Items[idx].(store.TaskItem).Task.Title
+			m.editBuf = m.editOrig
+			return m, nil
 		default:
 			if s, ok := digitFilters[msg.String()]; ok {
 				m.filter = Filter{Statuses: []model.Status{s}}
@@ -609,7 +612,7 @@ func today() string {
 // updatePrompt handles a keystroke while the new-task prompt is active.
 func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 	switch msg.Type {
-	case tea.KeyEsc:
+	case tea.KeyEsc, tea.KeyCtrlC:
 		m.prompting = false
 		m.promptBuf = ""
 		m.promptAbove = false
@@ -630,6 +633,56 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 		m.promptBuf += " "
 	}
 	return m
+}
+
+// updateEdit handles a keystroke while inline title edit is active.
+func (m Model) updateEdit(msg tea.KeyMsg) Model {
+	switch msg.Type {
+	case tea.KeyEsc, tea.KeyCtrlC:
+		m.clearEdit()
+	case tea.KeyEnter:
+		m.commitEdit()
+	case tea.KeyBackspace:
+		if len(m.editBuf) > 0 {
+			m.editBuf = m.editBuf[:len(m.editBuf)-1]
+		}
+	case tea.KeyRunes:
+		m.editBuf += string(msg.Runes)
+	case tea.KeySpace:
+		m.editBuf += " "
+	}
+	return m
+}
+
+func (m *Model) clearEdit() {
+	m.editing = false
+	m.editBuf = ""
+	m.editOrig = ""
+}
+
+// commitEdit writes the buffered title to the cursor task, rolling back the
+// in-memory mutation and dropping the undo entry if the save fails.
+func (m *Model) commitEdit() {
+	defer m.clearEdit()
+	proj, doc, idx, ok := m.currentTaskItem()
+	if !ok {
+		return
+	}
+	if m.editBuf == "" || m.editBuf == m.editOrig {
+		return
+	}
+	m.pushUndo(proj)
+	old := doc.Items[idx].(store.TaskItem)
+	ti := old
+	ti.Task.Title = m.editBuf
+	ti.RawLines[0] = store.RenderTaskLine(ti.Task)
+	doc.Items[idx] = ti
+	if err := m.saveWithBanner(proj, "edit"); err != nil {
+		doc.Items[idx] = old
+		m.popUndo()
+		return
+	}
+	m.commitUndo()
 }
 
 // deleteCurrent removes the task under the cursor, persists, and clamps cursor.

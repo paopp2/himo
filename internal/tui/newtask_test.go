@@ -59,3 +59,24 @@ func TestNewTask_oPromptsAndInserts(t *testing.T) {
 		t.Errorf("task 'Review PR' not created after o+input+Enter")
 	}
 }
+
+func TestNewTask_ctrlCCancelsPrompt(t *testing.T) {
+	m := NewModel(testProject(t))
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	mid := m2
+	for _, r := range "junk" {
+		mid, _ = mid.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	final, _ := mid.(Model).Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if final.(Model).prompting {
+		t.Error("Ctrl+C did not cancel prompt; prompting still true")
+	}
+	if final.(Model).promptBuf != "" {
+		t.Errorf("promptBuf after Ctrl+C = %q, want empty", final.(Model).promptBuf)
+	}
+	for _, task := range final.(Model).project.AllTasks() {
+		if task.Title == "junk" {
+			t.Errorf("Ctrl+C should not have committed buffer; found task %q", task.Title)
+		}
+	}
+}
