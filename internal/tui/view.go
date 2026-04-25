@@ -200,7 +200,11 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 		width = defaultWidth
 	}
 	for i, t := range tasks {
-		opts := taskLineInput{Width: width, Cursor: i == m.cursor}
+		opts := taskLineInput{
+			Width:       width,
+			Cursor:      i == m.cursor,
+			SearchQuery: m.activeSearchQuery(),
+		}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
 			opts.ProjectName = locs[i].proj.Name
@@ -227,8 +231,9 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 	rows := make([]string, len(tasks))
 	for i, t := range tasks {
 		opts := taskLineInput{
-			Width:  width - 2,
-			Cursor: i == m.cursor && !m.prompting,
+			Width:       width - 2,
+			Cursor:      i == m.cursor && !m.prompting,
+			SearchQuery: m.activeSearchQuery(),
 		}
 		if i == m.cursor && m.editing {
 			opts.Editing = true
@@ -308,6 +313,7 @@ type taskLineInput struct {
 	ProjectName string
 	Editing     bool
 	EditView    string
+	SearchQuery string
 }
 
 // renderTaskLine returns a single styled row:
@@ -352,7 +358,12 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	if o.Editing {
 		title = o.EditView
 	} else {
-		title = st.TitleStyle(t.Status).Render(runewidth.Truncate(t.Title, titleMax, "…"))
+		truncated := runewidth.Truncate(t.Title, titleMax, "…")
+		if o.SearchQuery == "" {
+			title = st.TitleStyle(t.Status).Render(truncated)
+		} else {
+			title = highlightMatch(truncated, o.SearchQuery, st.TitleStyle(t.Status), st.SearchHighlight)
+		}
 	}
 	title = chip + title
 

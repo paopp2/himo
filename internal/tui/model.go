@@ -216,6 +216,16 @@ func (m Model) SessionAllProjects() bool {
 
 func (m Model) Init() tea.Cmd { return nil }
 
+// activeSearchQuery returns the substring to highlight in the current
+// frame: the live input buffer while typing (incsearch), the committed
+// search after Enter, or "" otherwise.
+func (m Model) activeSearchQuery() string {
+	if m.searching {
+		return m.searchInput.Value()
+	}
+	return m.searchActive
+}
+
 // currentMode reports the interaction mode implied by m's overlay flags.
 func (m Model) currentMode() Mode {
 	switch {

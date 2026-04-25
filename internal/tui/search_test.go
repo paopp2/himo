@@ -211,6 +211,25 @@ func TestSearch_nWithNoActiveSearchIsNoop(t *testing.T) {
 	}
 }
 
+func TestSearch_activeQueryUsesLiveBufferWhileTyping(t *testing.T) {
+	m := NewModel(testProject(t))
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	if got := cur.(Model).activeSearchQuery(); got != "gr" {
+		t.Errorf("during typing, activeSearchQuery = %q, want %q", got, "gr")
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if got := cur.(Model).activeSearchQuery(); got != "gr" {
+		t.Errorf("after commit, activeSearchQuery = %q, want %q", got, "gr")
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if got := cur.(Model).activeSearchQuery(); got != "" {
+		t.Errorf("after Esc clears searchActive, activeSearchQuery = %q, want empty", got)
+	}
+}
+
 func TestSearch_ctrlWDeletesLastWord(t *testing.T) {
 	m := NewModel(testProject(t))
 	var cur tea.Model = m

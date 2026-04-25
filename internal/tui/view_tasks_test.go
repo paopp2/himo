@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"io"
 	"strings"
 	"testing"
 
@@ -16,6 +17,13 @@ func testStyles(t *testing.T) *Styles {
 	// Deterministic: Ascii profile -> no ANSI sequences, just raw text.
 	r := lipgloss.NewRenderer(nil, termenv.WithProfile(termenv.Ascii))
 	r.SetColorProfile(termenv.Ascii)
+	return NewStylesWithRenderer(r, StyleOptions{})
+}
+
+func testStylesWithColor(t *testing.T) *Styles {
+	t.Helper()
+	r := lipgloss.NewRenderer(io.Discard, termenv.WithProfile(termenv.TrueColor))
+	r.SetColorProfile(termenv.TrueColor)
 	return NewStylesWithRenderer(r, StyleOptions{})
 }
 
@@ -237,5 +245,40 @@ func TestRenderTaskLine_editingDoneTaskNoStrikethrough(t *testing.T) {
 	}, taskLineInput{Width: 60, Cursor: true, Editing: true, EditView: "Live"})
 	if !strings.Contains(line, "Live") {
 		t.Errorf("editing row missing buffer text on done task: %q", line)
+	}
+}
+
+func TestRenderTaskLine_highlightsTitleSubstring(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       60,
+		SearchQuery: "groc",
+	})
+	plain := stripANSI(row)
+	if !strings.Contains(plain, "Buy groceries") {
+		t.Fatalf("rendered row missing title: %q", plain)
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if hlOpen == "" {
+		t.Fatalf("expected SearchHighlight to produce ANSI; got empty open-code")
+	}
+	if !strings.Contains(row, hlOpen+"groc") {
+		t.Errorf("expected highlight open-code immediately before 'groc'\nrow: %q", row)
+	}
+}
+
+func TestRenderTaskLine_noQueryNoHighlight(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{Width: 60})
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if hlOpen == "" {
+		t.Fatalf("expected SearchHighlight to produce ANSI; got empty open-code")
+	}
+	if strings.Contains(row, hlOpen) {
+		t.Errorf("unexpected SearchHighlight code in row: %q", row)
 	}
 }
