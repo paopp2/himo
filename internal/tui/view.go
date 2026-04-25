@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/paopp2/himo/internal/model"
 	"github.com/paopp2/himo/internal/store"
@@ -323,20 +324,32 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	// pre-rendered (ANSI-laden) chip into the title and then re-rendering
 	// with TitleStyle triggers lipgloss's char-by-char Strikethrough path,
 	// which wraps each inner ESC byte individually and mangles the stream.
-	var title string
-	if o.Editing {
-		title = st.Base.Render(o.EditBuf) + inputCursor(st)
-	} else {
-		title = st.TitleStyle(t.Status).Render(t.Title)
-	}
+	var chip string
 	if o.AllProjects && o.ProjectName != "" {
 		chipStyle := st.Muted
 		switch t.Status {
 		case model.StatusDone, model.StatusCancelled:
 			chipStyle = chipStyle.Strikethrough(true)
 		}
-		title = chipStyle.Render("["+o.ProjectName+"] ") + title
+		chip = chipStyle.Render("[" + o.ProjectName + "] ")
 	}
+
+	// Reserve cells for the row's fixed columns so a long title gets
+	// truncated rather than wrapping. Layout: bar(1) " "(1) glyph(1) " "(1)
+	// chip title " "(1) dot(1) -> 7 + chipWidth fixed cells. Leaving the
+	// trailing separator space inside the budget keeps the dot column
+	// aligned with rows whose titles fit naturally.
+	titleMax := o.Width - 7 - lipgloss.Width(chip)
+	if titleMax < 1 {
+		titleMax = 1
+	}
+	var title string
+	if o.Editing {
+		title = st.Base.Render(o.EditBuf) + inputCursor(st)
+	} else {
+		title = st.TitleStyle(t.Status).Render(runewidth.Truncate(t.Title, titleMax, "…"))
+	}
+	title = chip + title
 
 	dot := " "
 	if t.HasNotes() {

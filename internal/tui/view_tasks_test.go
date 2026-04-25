@@ -81,6 +81,67 @@ func TestRenderTaskLine_allProjectsChip(t *testing.T) {
 	}
 }
 
+func TestRenderTaskLine_longTitleTruncatedWithEllipsis(t *testing.T) {
+	st := testStyles(t)
+	long := "This is a very long task title that absolutely will not fit"
+	line := renderTaskLine(st, model.Task{
+		Status: model.StatusPending, Title: long, Notes: "    hi",
+	}, taskLineInput{Width: 30})
+
+	if strings.Contains(line, "\n") {
+		t.Errorf("row wrapped to multiple lines:\n%q", line)
+	}
+	if lipgloss.Width(line) > 30 {
+		t.Errorf("row width %d exceeds Width=30: %q", lipgloss.Width(line), line)
+	}
+	if !strings.Contains(line, "…") {
+		t.Errorf("expected ellipsis marker: %q", line)
+	}
+	// Notes dot must remain right-aligned even when title is truncated.
+	if !strings.HasSuffix(line, "•") {
+		t.Errorf("notes dot not at row end: %q", line)
+	}
+}
+
+func TestRenderTaskLine_longTitleWithChipTruncates(t *testing.T) {
+	st := testStyles(t)
+	long := "This is a very long task title that does not fit alongside the chip"
+	line := renderTaskLine(st, model.Task{Status: model.StatusActive, Title: long},
+		taskLineInput{Width: 40, AllProjects: true, ProjectName: "work"})
+
+	if strings.Contains(line, "\n") {
+		t.Errorf("row wrapped to multiple lines:\n%q", line)
+	}
+	if lipgloss.Width(line) > 40 {
+		t.Errorf("row width %d exceeds Width=40: %q", lipgloss.Width(line), line)
+	}
+	if !strings.Contains(line, "[work]") {
+		t.Errorf("chip dropped during truncation: %q", line)
+	}
+	if !strings.Contains(line, "…") {
+		t.Errorf("expected ellipsis marker: %q", line)
+	}
+}
+
+// Indicators on truncated and non-truncated rows must land in the same
+// column, otherwise the right-edge "notes/link" dots zigzag visually.
+func TestRenderTaskLine_indicatorAlignmentMatchesShortRows(t *testing.T) {
+	st := testStyles(t)
+	short := renderTaskLine(st, model.Task{
+		Status: model.StatusPending, Title: "Short", Notes: "    hi",
+	}, taskLineInput{Width: 50})
+	long := renderTaskLine(st, model.Task{
+		Status: model.StatusPending,
+		Title:  "A title long enough that it must be truncated to fit",
+		Notes:  "    hi",
+	}, taskLineInput{Width: 50})
+
+	if lipgloss.Width(short) != lipgloss.Width(long) {
+		t.Fatalf("row widths diverge: short=%d long=%d\nshort=%q\nlong=%q",
+			lipgloss.Width(short), lipgloss.Width(long), short, long)
+	}
+}
+
 // Regression: nesting a Muted-rendered chip inside a TitleStyle(Done) render
 // triggers lipgloss's char-by-char Strikethrough path, which wraps each inner
 // ESC byte individually and corrupts the stream. The signature is a raw
