@@ -303,6 +303,48 @@ func TestRenderTaskLine_noQueryNoHighlight(t *testing.T) {
 	}
 }
 
+func TestRenderTaskLine_truncatedTitleMatchBeforeCut(t *testing.T) {
+	st := testStylesWithColor(t)
+	// Title is intentionally long. With Width=20, titleMax = 20 - 7 = 13.
+	// "Buy groceries today" truncated to 13 visible cells -> "Buy groceri…".
+	// Match "Buy" sits before the cut.
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries today and tomorrow"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       20,
+		SearchQuery: "Buy",
+	})
+	if !strings.Contains(stripANSI(row), "…") {
+		t.Fatalf("expected ellipsis in truncated row: %q", stripANSI(row))
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if !strings.Contains(row, hlOpen+"Buy") {
+		t.Errorf("expected highlight before cut; row: %q", row)
+	}
+}
+
+func TestRenderTaskLine_truncatedTitleMatchAfterCutNoHighlight(t *testing.T) {
+	st := testStylesWithColor(t)
+	// Match "tomorrow" is past the truncation cut.
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries today and tomorrow"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       20,
+		SearchQuery: "tomorrow",
+	})
+	plain := stripANSI(row)
+	if !strings.Contains(plain, "…") {
+		t.Fatalf("expected ellipsis in truncated row: %q", plain)
+	}
+	if strings.Contains(plain, "tomorrow") {
+		t.Fatalf("'tomorrow' should be truncated away: %q", plain)
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if strings.Contains(row, hlOpen) {
+		t.Errorf("unexpected highlight ANSI in row whose match was truncated; row: %q", row)
+	}
+}
+
 func TestRenderTaskLine_cursorRowPreservesHighlight(t *testing.T) {
 	st := testStylesWithColor(t)
 	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
