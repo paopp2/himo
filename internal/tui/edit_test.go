@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -317,5 +318,33 @@ func TestEdit_undoRevertsTitleChange(t *testing.T) {
 	m = keypress(t, m, keyRune('u'))
 	if got := firstTaskTitle(t, m); got != original {
 		t.Errorf("post-undo title = %q, want %q", got, original)
+	}
+}
+
+// TestEdit_saveConflictRollsBack mirrors TestSetStatus_saveConflictSetsBanner:
+// an external write between load and commit must surface a banner, leave the
+// in-memory title unchanged, and not record an undo entry.
+func TestEdit_saveConflictRollsBack(t *testing.T) {
+	m := NewModel(testProject(t))
+	original := firstTaskTitle(t, m)
+	dir := m.project.Dir
+	time.Sleep(10 * time.Millisecond)
+	if err := os.WriteFile(filepath.Join(dir, "active.md"), []byte("- [ ] external\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m = keypress(t, m, keyRune('e'))
+	for range m.editBuf {
+		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
+	}
+	m = typeString(t, m, "Renamed")
+	m = keypress(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	if m.banner == "" || !strings.Contains(m.banner, "blocked") {
+		t.Errorf("banner = %q, want to mention blocked", m.banner)
+	}
+	if got := firstTaskTitle(t, m); got != original {
+		t.Errorf("title after conflict = %q, want unchanged %q", got, original)
+	}
+	if len(m.undoStack) != 0 {
+		t.Errorf("undoStack len = %d, want 0 (rollback should drop the entry)", len(m.undoStack))
 	}
 }
