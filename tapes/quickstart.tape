@@ -5,10 +5,10 @@ Require bat
 Require starship
 
 Set Shell "bash"
-Set FontSize 16
-Set Width 1200
-Set Height 720
-Set Padding 24
+Set FontSize 20
+Set Width 1600
+Set Height 900
+Set Padding 32
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 80ms
 Set WindowBar "Colorful"
