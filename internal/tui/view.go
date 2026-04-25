@@ -125,6 +125,7 @@ func renderView(m Model) string {
 		Current:  m.project.Name,
 		Width:    width,
 		AllMode:  m.allProjects,
+		Sort:     m.sort,
 	})
 	fbar := renderFilterBar(m.styles, m.filter, m.statusCounts(), width)
 

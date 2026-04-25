@@ -11,6 +11,7 @@ type topBarInput struct {
 	Current  string
 	Width    int
 	AllMode  bool
+	Sort     Sort
 }
 
 func renderTopBar(st *Styles, in topBarInput) string {
@@ -35,7 +36,9 @@ func renderTopBar(st *Styles, in topBarInput) string {
 		}
 		left = strings.Join(parts, "    ")
 	}
-	right := st.Muted.Render("[A] all") + "  " + st.Muted.Render("[P] picker")
+	right := st.Muted.Render("[A] all") + "  " +
+		st.Muted.Render("[P] picker") + "  " +
+		st.Muted.Render("[s] sort:"+sortName(in.Sort))
 
 	padWidth := in.Width - lipgloss.Width(left) - lipgloss.Width(right)
 	if padWidth < 2 {
