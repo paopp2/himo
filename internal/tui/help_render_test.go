@@ -31,3 +31,14 @@ func TestRenderHelp_threeColumns(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderHelp_showsInlineEdit(t *testing.T) {
+	st := testStyles(t)
+	out := renderHelp(st, 120)
+	if !strings.Contains(out, "edit title inline") {
+		t.Errorf("help missing 'edit title inline' label:\n%s", out)
+	}
+	if strings.Contains(out, "edit current file") {
+		t.Errorf("help still mentions removed 'edit current file' action:\n%s", out)
+	}
+}

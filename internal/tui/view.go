@@ -58,7 +58,7 @@ func renderHelp(st *Styles, width int) string {
 	actions := col("Actions", [][2]string{
 		{"Enter", "notes in $EDITOR"},
 		{"Ctrl+o", "open URL"},
-		{"e", "edit current file"},
+		{"e", "edit title inline"},
 		{"Space", "cycle status"},
 		{"b/p/a", "backlog / pending / active"},
 		{"!/x/-", "blocked / done / cancelled"},
