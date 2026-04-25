@@ -8,7 +8,7 @@ import (
 	"github.com/paopp2/himo/internal/model"
 )
 
-func TestSearch_escClearsActiveSearch(t *testing.T) {
+func TestSearch_escClearsActiveSearchKeepsCursor(t *testing.T) {
 	m := NewModel(testProject(t))
 	var cur tea.Model = m
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
@@ -19,9 +19,13 @@ func TestSearch_escClearsActiveSearch(t *testing.T) {
 	if cur.(Model).searchActive == "" {
 		t.Fatalf("searchActive not set after search commit")
 	}
+	cursorBeforeEsc := cur.(Model).cursor
 	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if cur.(Model).searchActive != "" {
 		t.Errorf("searchActive = %q after Esc, want empty", cur.(Model).searchActive)
+	}
+	if got := cur.(Model).cursor; got != cursorBeforeEsc {
+		t.Errorf("cursor = %d after Esc, want %d (unchanged)", got, cursorBeforeEsc)
 	}
 }
 

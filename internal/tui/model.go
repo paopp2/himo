@@ -375,7 +375,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.exitAllProjects()
 			} else if m.searchActive != "" {
 				m.searchActive = ""
-				m.cursor = 0
 			}
 		case "tab":
 			if m.allProjects {
