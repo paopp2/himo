@@ -68,6 +68,47 @@ func TestSearch_escDuringTypingRestoresCursor(t *testing.T) {
 	}
 }
 
+func TestSearch_incsearchJumpsCursorToFirstMatch(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	for _, r := range "design" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("incsearch 'design' from cursor 0: got cursor %d, want 1", got)
+	}
+}
+
+func TestSearch_incsearchNoMatchKeepsCursorAtPreSearch(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 1
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	for _, r := range "xyzzy" {
+		cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	if got := cur.(Model).cursor; got != 1 {
+		t.Errorf("incsearch with no match: got cursor %d, want 1 (preSearchCursor)", got)
+	}
+}
+
+func TestSearch_incsearchEmptyBufferRestoresCursor(t *testing.T) {
+	m := NewModel(testProject(t))
+	m.cursor = 0
+	var cur tea.Model = m
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	if got := cur.(Model).cursor; got != 1 {
+		t.Fatalf("expected cursor at 1 after typing 'd', got %d", got)
+	}
+	cur, _ = cur.(Model).Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	if got := cur.(Model).cursor; got != 0 {
+		t.Errorf("after backspace to empty buffer, cursor = %d, want 0 (preSearchCursor)", got)
+	}
+}
+
 func TestSearch_ctrlWDeletesLastWord(t *testing.T) {
 	m := NewModel(testProject(t))
 	var cur tea.Model = m

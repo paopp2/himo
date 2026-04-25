@@ -318,7 +318,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchInput.Reset()
 				m.cursor = 0
 			default:
+				before := m.searchInput.Value()
 				m.searchInput, _ = m.searchInput.Update(msg)
+				if m.searchInput.Value() != before {
+					m.applyIncsearch()
+				}
 			}
 			return m, nil
 		}
@@ -590,6 +594,28 @@ func (m Model) currentTaskItem() (*store.Project, *store.Document, int, bool) {
 	}
 	loc := locs[m.cursor]
 	return loc.proj, loc.doc, loc.idx, true
+}
+
+// applyIncsearch updates m.cursor to the first match of the current
+// search buffer, scanning forward from preSearchCursor. Empty buffer or
+// no-match restores cursor to preSearchCursor.
+func (m *Model) applyIncsearch() {
+	q := m.searchInput.Value()
+	if q == "" {
+		m.cursor = m.preSearchCursor
+		return
+	}
+	locs := m.visibleTaskLocations()
+	if len(locs) == 0 {
+		m.cursor = m.preSearchCursor
+		return
+	}
+	idx, _, ok := nextMatch(locs, q, m.allProjects, m.preSearchCursor, true)
+	if !ok {
+		m.cursor = m.preSearchCursor
+		return
+	}
+	m.cursor = idx
 }
 
 // setStatus changes the cursor task's status, normalizes, and saves.
