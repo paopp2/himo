@@ -6,6 +6,9 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+
+	"github.com/paopp2/himo/internal/model"
+	"github.com/paopp2/himo/internal/store"
 )
 
 // hlStyles returns base/highlight styles bound to a TrueColor renderer so
@@ -107,4 +110,78 @@ func TestHighlightMatch_multibyte(t *testing.T) {
 	if stripANSI(got) != "café noir" {
 		t.Errorf("plain text mismatch: got %q", stripANSI(got))
 	}
+}
+
+func locFromTitle(p *store.Project, title string) taskLoc {
+	doc := &store.Document{}
+	t := model.Task{Status: model.StatusPending, Title: title}
+	doc.Items = append(doc.Items, store.TaskItem{
+		Task:     t,
+		RawLines: []string{store.RenderTaskLine(t)},
+	})
+	return taskLoc{proj: p, doc: doc, idx: len(doc.Items) - 1}
+}
+
+func TestMatchIndices_emptyNeedleReturnsNil(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{locFromTitle(p, "Buy groceries"), locFromTitle(p, "Write design")}
+	if got := matchIndices(locs, "", false); got != nil {
+		t.Errorf("empty needle: got %v, want nil", got)
+	}
+}
+
+func TestMatchIndices_titleSubstring(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Buy groceries"),
+		locFromTitle(p, "Write design"),
+		locFromTitle(p, "Design review"),
+	}
+	got := matchIndices(locs, "design", false)
+	want := []int{1, 2}
+	if !equalInts(got, want) {
+		t.Errorf("matchIndices: got %v, want %v", got, want)
+	}
+}
+
+func TestMatchIndices_caseInsensitive(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{locFromTitle(p, "Buy GROCERIES")}
+	got := matchIndices(locs, "groc", false)
+	if !equalInts(got, []int{0}) {
+		t.Errorf("case-insensitive: got %v, want [0]", got)
+	}
+}
+
+func TestMatchIndices_projectNameInAllProjectsMode(t *testing.T) {
+	work := &store.Project{Name: "work"}
+	personal := &store.Project{Name: "personal"}
+	locs := []taskLoc{
+		locFromTitle(work, "Buy groceries"),
+		locFromTitle(personal, "Read book"),
+	}
+	got := matchIndices(locs, "person", true)
+	if !equalInts(got, []int{1}) {
+		t.Errorf("all-projects project match: got %v, want [1]", got)
+	}
+}
+
+func TestMatchIndices_projectNameIgnoredInSingleProjectMode(t *testing.T) {
+	work := &store.Project{Name: "work"}
+	locs := []taskLoc{locFromTitle(work, "Buy groceries")}
+	if got := matchIndices(locs, "work", false); got != nil {
+		t.Errorf("single-project mode should ignore project name: got %v, want nil", got)
+	}
+}
+
+func equalInts(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

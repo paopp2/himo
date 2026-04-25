@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/paopp2/himo/internal/store"
 )
 
 // highlightMatch returns s with all case-insensitive occurrences of needle
@@ -33,4 +35,38 @@ func highlightMatch(s, needle string, base, hl lipgloss.Style) string {
 		i += j + len(lowN)
 	}
 	return b.String()
+}
+
+// taskLocMatches reports whether loc's task title (or project name when
+// allProjects is true) contains needleLower (already lowercased).
+func taskLocMatches(loc taskLoc, needleLower string, allProjects bool) bool {
+	ti, ok := loc.doc.Items[loc.idx].(store.TaskItem)
+	if !ok {
+		return false
+	}
+	if strings.Contains(strings.ToLower(ti.Task.Title), needleLower) {
+		return true
+	}
+	if allProjects && loc.proj != nil &&
+		strings.Contains(strings.ToLower(loc.proj.Name), needleLower) {
+		return true
+	}
+	return false
+}
+
+// matchIndices returns positions in locs whose task matches needle,
+// case-insensitive. In all-projects mode the project name is also matched.
+// Empty needle returns nil.
+func matchIndices(locs []taskLoc, needle string, allProjects bool) []int {
+	if needle == "" {
+		return nil
+	}
+	needleLower := strings.ToLower(needle)
+	var out []int
+	for i, loc := range locs {
+		if taskLocMatches(loc, needleLower, allProjects) {
+			out = append(out, i)
+		}
+	}
+	return out
 }
