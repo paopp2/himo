@@ -5,17 +5,20 @@ import (
 )
 
 type modalInput struct {
-	Title  string
-	Body   string
-	Hints  string
-	Width  int
-	Height int
-	Error  bool
+	Title    string
+	Body     string
+	Hints    string
+	Width    int
+	Height   int
+	Error    bool
+	BoxWidth int // overrides default sizing when > 0
 }
 
 // centeredBox renders body with title + hints in a rounded-border box,
 // sized to min(50, 60% of terminal), centered within (Width, Height).
-// Error=true styles the title in red instead of accent.
+// Error=true styles the title in red instead of accent. BoxWidth, when
+// set, overrides the default sizing -- used by wide content like the
+// help screen that doesn't fit the 50-cell cap.
 func centeredBox(st *Styles, in modalInput) string {
 	boxW := in.Width * 60 / 100
 	if boxW > 50 {
@@ -23,6 +26,12 @@ func centeredBox(st *Styles, in modalInput) string {
 	}
 	if boxW < 30 {
 		boxW = 30
+	}
+	if in.BoxWidth > 0 {
+		boxW = in.BoxWidth
+		if boxW > in.Width-2 {
+			boxW = in.Width - 2
+		}
 	}
 
 	titleStyle := st.Accent
