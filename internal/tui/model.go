@@ -106,6 +106,7 @@ type Model struct {
 	searching         bool
 	searchInput       textinput.Model
 	searchActive      string
+	preSearchCursor   int
 	showingHelp       bool
 	pickerOpen        bool
 	pickerCursor      int
@@ -215,6 +216,16 @@ func (m Model) SessionAllProjects() bool {
 
 func (m Model) Init() tea.Cmd { return nil }
 
+// activeSearchQuery returns the substring to highlight in the current
+// frame: the live input buffer while typing (incsearch), the committed
+// search after Enter, or "" otherwise.
+func (m Model) activeSearchQuery() string {
+	if m.searching {
+		return m.searchInput.Value()
+	}
+	return m.searchActive
+}
+
 // currentMode reports the interaction mode implied by m's overlay flags.
 func (m Model) currentMode() Mode {
 	switch {
@@ -314,9 +325,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchActive = m.searchInput.Value()
 				m.searching = false
 				m.searchInput.Reset()
-				m.cursor = 0
 			default:
+				before := m.searchInput.Value()
 				m.searchInput, _ = m.searchInput.Update(msg)
+				if m.searchInput.Value() != before {
+					m.applyIncsearch()
+				}
 			}
 			return m, nil
 		}
@@ -338,6 +352,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if n := len(m.visibleTasks()); n > 0 {
 				m.cursor = n - 1
 			}
+		case "n":
+			m.jumpMatch(true)
+		case "N":
+			m.jumpMatch(false)
 		case "ctrl+d":
 			half := maxInt(m.height/2, 1)
 			if n := len(m.visibleTasks()); n > 0 {
@@ -353,11 +371,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.filter = DefaultFilter()
 			m.cursor = 0
 		case "esc":
-			if m.allProjects {
-				m.exitAllProjects()
-			} else if m.searchActive != "" {
+			if m.searchActive != "" {
 				m.searchActive = ""
-				m.cursor = 0
+			} else if m.allProjects {
+				m.exitAllProjects()
 			}
 		case "tab":
 			if m.allProjects {
@@ -406,6 +423,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.promptInput.Focus()
 			m.promptAbove = true
 		case "/":
+			m.preSearchCursor = m.cursor
 			m.searching = true
 			m.searchInput.Reset()
 			m.searchInput.Focus()
@@ -529,9 +547,6 @@ func (m Model) visibleTaskLocations() []taskLoc {
 						continue
 					}
 				}
-				if m.searchActive != "" && !strings.Contains(strings.ToLower(ti.Task.Title), strings.ToLower(m.searchActive)) {
-					continue
-				}
 				out = append(out, taskLoc{proj: p, doc: d, idx: i})
 			}
 		}
@@ -590,6 +605,55 @@ func (m Model) currentTaskItem() (*store.Project, *store.Document, int, bool) {
 	}
 	loc := locs[m.cursor]
 	return loc.proj, loc.doc, loc.idx, true
+}
+
+func (m *Model) applyIncsearch() {
+	q := m.searchInput.Value()
+	if q == "" {
+		m.cursor = m.preSearchCursor
+		return
+	}
+	locs := m.visibleTaskLocations()
+	if len(locs) == 0 {
+		m.cursor = m.preSearchCursor
+		return
+	}
+	idx, _, ok := nextMatch(locs, q, m.allProjects, m.preSearchCursor, true)
+	if !ok {
+		m.cursor = m.preSearchCursor
+		return
+	}
+	m.cursor = idx
+}
+
+// jumpMatch moves the cursor to the next (forward=true) or previous match
+// of m.searchActive. Sets m.banner to vim's wrap message when the scan
+// wraps the boundary, or "no matches" when there are zero matches. No-op
+// when searchActive is empty.
+func (m *Model) jumpMatch(forward bool) {
+	if m.searchActive == "" {
+		return
+	}
+	locs := m.visibleTaskLocations()
+	from := m.cursor + 1
+	if !forward {
+		from = m.cursor - 1
+	}
+	idx, wrapped, ok := nextMatch(locs, m.searchActive, m.allProjects, from, forward)
+	if !ok {
+		m.banner = "no matches"
+		return
+	}
+	m.cursor = idx
+	m.banner = ""
+	if !wrapped {
+		return
+	}
+	if forward {
+		m.banner = "search hit BOTTOM, continuing at TOP"
+	} else {
+		m.banner = "search hit TOP, continuing at BOTTOM"
+	}
 }
 
 // setStatus changes the cursor task's status, normalizes, and saves.

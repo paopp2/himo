@@ -71,7 +71,7 @@ Edit any file directly in `$EDITOR`. When you save, `himo` figures out what chan
 
 Vim-style. Left pane is the task list, right pane previews the highlighted task's notes.
 
-**Navigation:** `j`/`k` move, `g`/`G` top/bottom, `/` search, `q` quit
+**Navigation:** `j`/`k` move, `g`/`G` top/bottom, `/` search, `n`/`N` next/prev match, `q` quit
 
 **Filters:** `0` all, `1` backlog, `2` pending, `3` active, `4` blocked, `5` done, `6` cancelled, `Esc` default
 

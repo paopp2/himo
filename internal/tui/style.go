@@ -43,6 +43,8 @@ type Styles struct {
 	ModePillPicker lipgloss.Style
 	ModePillHelp   lipgloss.Style
 
+	SearchHighlight lipgloss.Style
+
 	TitleBacklog   lipgloss.Style
 	TitlePending   lipgloss.Style
 	TitleActive    lipgloss.Style
@@ -105,6 +107,8 @@ func NewStylesWithRenderer(r *lipgloss.Renderer, opts StyleOptions) *Styles {
 		ModePillDelete: pillBase(r).Background(errc),
 		ModePillPicker: pillBase(r).Background(pillPurple),
 		ModePillHelp:   pillBase(r).Background(muted),
+
+		SearchHighlight: r.NewStyle().Foreground(lipgloss.Color("0")).Background(accent),
 
 		TitleBacklog:   r.NewStyle().Italic(true).Foreground(muted),
 		TitlePending:   r.NewStyle(),

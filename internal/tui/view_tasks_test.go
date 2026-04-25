@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/muesli/termenv"
 
 	"github.com/paopp2/himo/internal/model"
@@ -16,6 +18,13 @@ func testStyles(t *testing.T) *Styles {
 	// Deterministic: Ascii profile -> no ANSI sequences, just raw text.
 	r := lipgloss.NewRenderer(nil, termenv.WithProfile(termenv.Ascii))
 	r.SetColorProfile(termenv.Ascii)
+	return NewStylesWithRenderer(r, StyleOptions{})
+}
+
+func testStylesWithColor(t *testing.T) *Styles {
+	t.Helper()
+	r := lipgloss.NewRenderer(io.Discard, termenv.WithProfile(termenv.TrueColor))
+	r.SetColorProfile(termenv.TrueColor)
 	return NewStylesWithRenderer(r, StyleOptions{})
 }
 
@@ -237,5 +246,155 @@ func TestRenderTaskLine_editingDoneTaskNoStrikethrough(t *testing.T) {
 	}, taskLineInput{Width: 60, Cursor: true, Editing: true, EditView: "Live"})
 	if !strings.Contains(line, "Live") {
 		t.Errorf("editing row missing buffer text on done task: %q", line)
+	}
+}
+
+func TestRenderTaskLine_highlightsTitleSubstring(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       60,
+		SearchQuery: "groc",
+	})
+	plain := ansi.Strip(row)
+	if !strings.Contains(plain, "Buy groceries") {
+		t.Fatalf("rendered row missing title: %q", plain)
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if hlOpen == "" {
+		t.Fatalf("expected SearchHighlight to produce ANSI; got empty open-code")
+	}
+	if !strings.Contains(row, hlOpen+"groc") {
+		t.Errorf("expected highlight open-code immediately before 'groc'\nrow: %q", row)
+	}
+}
+
+func TestRenderTaskLine_highlightsProjectChipInAllProjects(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       60,
+		AllProjects: true,
+		ProjectName: "personal",
+		SearchQuery: "person",
+	})
+	plain := ansi.Strip(row)
+	if !strings.Contains(plain, "[personal]") {
+		t.Fatalf("rendered row missing chip: %q", plain)
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if !strings.Contains(row, hlOpen+"person") {
+		t.Errorf("expected highlight inside the chip\nrow: %q", row)
+	}
+}
+
+func TestRenderTaskLine_noQueryNoHighlight(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{Width: 60})
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if hlOpen == "" {
+		t.Fatalf("expected SearchHighlight to produce ANSI; got empty open-code")
+	}
+	if strings.Contains(row, hlOpen) {
+		t.Errorf("unexpected SearchHighlight code in row: %q", row)
+	}
+}
+
+func TestRenderTaskLine_truncatedTitleMatchBeforeCut(t *testing.T) {
+	st := testStylesWithColor(t)
+	// Title is intentionally long. With Width=20, titleMax = 20 - 7 = 13.
+	// "Buy groceries today" truncated to 13 visible cells -> "Buy groceri…".
+	// Match "Buy" sits before the cut.
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries today and tomorrow"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       20,
+		SearchQuery: "Buy",
+	})
+	if !strings.Contains(ansi.Strip(row), "…") {
+		t.Fatalf("expected ellipsis in truncated row: %q", ansi.Strip(row))
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if !strings.Contains(row, hlOpen+"Buy") {
+		t.Errorf("expected highlight before cut; row: %q", row)
+	}
+}
+
+func TestRenderTaskLine_truncatedTitleMatchAfterCutNoHighlight(t *testing.T) {
+	st := testStylesWithColor(t)
+	// Match "tomorrow" is past the truncation cut.
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries today and tomorrow"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       20,
+		SearchQuery: "tomorrow",
+	})
+	plain := ansi.Strip(row)
+	if !strings.Contains(plain, "…") {
+		t.Fatalf("expected ellipsis in truncated row: %q", plain)
+	}
+	if strings.Contains(plain, "tomorrow") {
+		t.Fatalf("'tomorrow' should be truncated away: %q", plain)
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if strings.Contains(row, hlOpen) {
+		t.Errorf("unexpected highlight ANSI in row whose match was truncated; row: %q", row)
+	}
+}
+
+func TestRenderTaskLine_cursorRowPreservesHighlight(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       60,
+		Cursor:      true,
+		SearchQuery: "groc",
+	})
+	plain := ansi.Strip(row)
+	if !strings.Contains(plain, "Buy groceries") {
+		t.Fatalf("rendered cursor row missing title: %q", plain)
+	}
+
+	// Highlight open-code is still present somewhere in the row.
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if hlOpen == "" {
+		t.Fatalf("expected SearchHighlight to produce ANSI; got empty open-code")
+	}
+	if !strings.Contains(row, hlOpen) {
+		t.Errorf("cursor row missing highlight open-code; PaintCursorRow may have stripped it\nrow: %q", row)
+	}
+
+	// Cursor BG open-code re-engages after every reset (PaintCursorRow's
+	// invariant). Extract the open/closer markers from CursorRowBG.
+	marker := st.CursorRowBG.Render("\x00")
+	parts := strings.SplitN(marker, "\x00", 2)
+	if len(parts) != 2 {
+		t.Fatalf("CursorRowBG.Render did not produce a splittable marker")
+	}
+	bgOpen, bgClose := parts[0], parts[1]
+	if bgOpen == "" {
+		t.Fatalf("expected non-empty cursor BG open-code")
+	}
+	// Every internal bgClose (i.e., not the trailing one) should be
+	// immediately followed by bgOpen. Strip the final trailing close, then
+	// verify every remaining occurrence is followed by an open.
+	body := strings.TrimSuffix(row, bgClose)
+	idx := 0
+	for {
+		j := strings.Index(body[idx:], bgClose)
+		if j < 0 {
+			break
+		}
+		after := idx + j + len(bgClose)
+		if !strings.HasPrefix(body[after:], bgOpen) {
+			t.Errorf("internal bgClose at offset %d not followed by bgOpen — cursor BG drops mid-row\nrow: %q", after, row)
+			break
+		}
+		idx = after
 	}
 }

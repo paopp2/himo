@@ -40,6 +40,7 @@ func renderHelp(st *Styles, width int) string {
 		{"g/G", "top / bottom"},
 		{"Ctrl+d/u", "half page"},
 		{"/", "search"},
+		{"n/N", "next / prev match"},
 		{"Tab", "next project"},
 		{"S-Tab", "prev project"},
 		{"P", "project picker"},
@@ -169,12 +170,25 @@ func renderView(m Model) string {
 		body = lipgloss.JoinHorizontal(lipgloss.Top, listPane, "  ", previewPane)
 	}
 
+	query := m.activeSearchQuery()
+	matches := matchIndices(locs, query, m.allProjects)
+	matchPos := 0
+	for i, p := range matches {
+		if p == m.cursor {
+			matchPos = i + 1
+			break
+		}
+	}
+
 	hint := renderHintBar(m.styles, hintInput{
-		Mode:        m.currentMode(),
-		Width:       width,
-		SearchBuf:   m.searchInput.View(),
-		DeleteTitle: deleteTitle(m, tasks),
-		Banner:      m.banner,
+		Mode:           m.currentMode(),
+		Width:          width,
+		SearchBuf:      m.searchInput.View(),
+		DeleteTitle:    deleteTitle(m, tasks),
+		Banner:         m.banner,
+		SearchActive:   query,
+		SearchMatchPos: matchPos,
+		SearchTotal:    len(matches),
 	})
 	view := top + "\n"
 	if fbar != "" {
@@ -199,8 +213,13 @@ func renderList(m Model, locs []taskLoc, tasks []model.Task) string {
 	if width <= 0 {
 		width = defaultWidth
 	}
+	query := m.activeSearchQuery()
 	for i, t := range tasks {
-		opts := taskLineInput{Width: width, Cursor: i == m.cursor}
+		opts := taskLineInput{
+			Width:       width,
+			Cursor:      i == m.cursor,
+			SearchQuery: query,
+		}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
 			opts.ProjectName = locs[i].proj.Name
@@ -224,11 +243,13 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 		contentH = 1
 	}
 
+	query := m.activeSearchQuery()
 	rows := make([]string, len(tasks))
 	for i, t := range tasks {
 		opts := taskLineInput{
-			Width:  width - 2,
-			Cursor: i == m.cursor && !m.prompting,
+			Width:       width - 2,
+			Cursor:      i == m.cursor && !m.prompting,
+			SearchQuery: query,
 		}
 		if i == m.cursor && m.editing {
 			opts.Editing = true
@@ -308,6 +329,7 @@ type taskLineInput struct {
 	ProjectName string
 	Editing     bool
 	EditView    string
+	SearchQuery string
 }
 
 // renderTaskLine returns a single styled row:
@@ -336,7 +358,12 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 		case model.StatusDone, model.StatusCancelled:
 			chipStyle = chipStyle.Strikethrough(true)
 		}
-		chip = chipStyle.Render("[" + o.ProjectName + "] ")
+		chipText := "[" + o.ProjectName + "] "
+		if o.SearchQuery == "" {
+			chip = chipStyle.Render(chipText)
+		} else {
+			chip = highlightMatch(chipText, o.SearchQuery, chipStyle, st.SearchHighlight)
+		}
 	}
 
 	// Reserve cells for the row's fixed columns so a long title gets
@@ -352,7 +379,12 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	if o.Editing {
 		title = o.EditView
 	} else {
-		title = st.TitleStyle(t.Status).Render(runewidth.Truncate(t.Title, titleMax, "…"))
+		truncated := runewidth.Truncate(t.Title, titleMax, "…")
+		if o.SearchQuery == "" {
+			title = st.TitleStyle(t.Status).Render(truncated)
+		} else {
+			title = highlightMatch(truncated, o.SearchQuery, st.TitleStyle(t.Status), st.SearchHighlight)
+		}
 	}
 	title = chip + title
 
