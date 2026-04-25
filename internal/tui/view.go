@@ -287,7 +287,7 @@ func renderGhostRow(st *Styles, buf string, width int) string {
 		padding = 0
 	}
 	row := left + strings.Repeat(" ", padding)
-	return st.CursorRowBG.Render(row)
+	return st.PaintCursorRow(row)
 }
 
 // inputCursor returns the styled block glyph used as the text-input caret
@@ -368,7 +368,7 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	row := left + strings.Repeat(" ", padding) + dot
 
 	if o.Cursor {
-		row = st.CursorRowBG.Render(row)
+		row = st.PaintCursorRow(row)
 	}
 	return row
 }

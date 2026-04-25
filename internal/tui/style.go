@@ -2,6 +2,7 @@ package tui
 
 import (
 	"io"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -64,7 +65,10 @@ func NewStylesWithRenderer(r *lipgloss.Renderer, opts StyleOptions) *Styles {
 	accent := lipgloss.AdaptiveColor{Light: "#008787", Dark: "#008787"}
 	errc := lipgloss.AdaptiveColor{Light: "#b91c1c", Dark: "#ef4444"}
 	ok := lipgloss.AdaptiveColor{Light: "#15803d", Dark: "#22c55e"}
-	subtle := lipgloss.AdaptiveColor{Light: "#e5e7eb", Dark: "#374151"}
+	// Cursor row tint: a dark/light teal washed toward the pane background,
+	// roughly the accent (#008787) blended ~15% over black/white. Subtle but
+	// reads as part of the project palette instead of neutral gray.
+	subtle := lipgloss.AdaptiveColor{Light: "#daeded", Dark: "#0f2222"}
 
 	return &Styles{
 		asciiGlyphs: opts.AsciiGlyphs,
@@ -144,6 +148,22 @@ func (s *Styles) GlyphStyle(st model.Status) lipgloss.Style {
 		return s.GlyphCancelled
 	}
 	return s.Base
+}
+
+// PaintCursorRow paints the cursor-row background across an already-styled
+// row. Lipgloss' Render wraps content with SGR-open + reset-close, but any
+// ANSI reset inside the content (from nested chip/glyph/title styles) also
+// clears the outer background, so the highlight goes dark mid-row. Re-emit
+// the background open-code after every reset to keep it lit edge to edge.
+func (s *Styles) PaintCursorRow(row string) string {
+	marker := s.CursorRowBG.Render("\x00")
+	parts := strings.SplitN(marker, "\x00", 2)
+	if len(parts) != 2 || parts[0] == "" {
+		// ASCII / no-color renderer: nothing to paint.
+		return row
+	}
+	open, closer := parts[0], parts[1]
+	return open + strings.ReplaceAll(row, closer, closer+open) + closer
 }
 
 func (s *Styles) TitleStyle(st model.Status) lipgloss.Style {
