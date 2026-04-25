@@ -70,3 +70,38 @@ func matchIndices(locs []taskLoc, needle string, allProjects bool) []int {
 	}
 	return out
 }
+
+// nextMatch returns the closest matching position in locs in the requested
+// direction starting at from. Scans up to len(locs) positions, wrapping if
+// needed. `from` may be out of [0,len) range; this signals the cursor
+// stepped off the end. When it does, any match found is by definition a wrap.
+// Returns ok=false when there are zero matches (or empty list/needle).
+func nextMatch(locs []taskLoc, needle string, allProjects bool, from int, forward bool) (idx int, wrapped bool, ok bool) {
+	n := len(locs)
+	if n == 0 || needle == "" {
+		return 0, false, false
+	}
+	needleLower := strings.ToLower(needle)
+	step := 1
+	if !forward {
+		step = -1
+	}
+	fromOOB := from < 0 || from >= n
+	start := ((from % n) + n) % n
+	for i := 0; i < n; i++ {
+		pos := ((start+step*i)%n + n) % n
+		if !taskLocMatches(locs[pos], needleLower, allProjects) {
+			continue
+		}
+		w := fromOOB
+		if !w {
+			if forward && pos < start {
+				w = true
+			} else if !forward && pos > start {
+				w = true
+			}
+		}
+		return pos, w, true
+	}
+	return 0, false, false
+}

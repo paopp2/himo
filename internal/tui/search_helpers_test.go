@@ -185,3 +185,108 @@ func equalInts(a, b []int) bool {
 	}
 	return true
 }
+
+func TestNextMatch_forwardFindsAtOrAfter(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Buy groceries"),
+		locFromTitle(p, "Write design"),
+		locFromTitle(p, "Design review"),
+	}
+	idx, wrapped, ok := nextMatch(locs, "design", false, 1, true)
+	if !ok || idx != 1 || wrapped {
+		t.Errorf("forward from 1: idx=%d wrapped=%v ok=%v, want 1 false true", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_forwardWrapsToEarlierMatch(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Design A"),
+		locFromTitle(p, "Buy groceries"),
+		locFromTitle(p, "Read book"),
+	}
+	idx, wrapped, ok := nextMatch(locs, "design", false, 2, true)
+	if !ok || idx != 0 || !wrapped {
+		t.Errorf("forward wrap from 2: idx=%d wrapped=%v ok=%v, want 0 true true", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_backwardFindsAtOrBefore(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Design A"),
+		locFromTitle(p, "Buy groceries"),
+		locFromTitle(p, "Design B"),
+	}
+	idx, wrapped, ok := nextMatch(locs, "design", false, 2, false)
+	if !ok || idx != 2 || wrapped {
+		t.Errorf("backward from 2: idx=%d wrapped=%v ok=%v, want 2 false true", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_backwardWrapsToLaterMatch(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Buy groceries"),
+		locFromTitle(p, "Read book"),
+		locFromTitle(p, "Design A"),
+	}
+	idx, wrapped, ok := nextMatch(locs, "design", false, 0, false)
+	if !ok || idx != 2 || !wrapped {
+		t.Errorf("backward wrap from 0: idx=%d wrapped=%v ok=%v, want 2 true true", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_noMatches(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{locFromTitle(p, "Buy groceries"), locFromTitle(p, "Read book")}
+	idx, wrapped, ok := nextMatch(locs, "xyz", false, 0, true)
+	if ok || idx != 0 || wrapped {
+		t.Errorf("no matches: idx=%d wrapped=%v ok=%v, want 0 false false", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_emptyList(t *testing.T) {
+	idx, wrapped, ok := nextMatch(nil, "design", false, 0, true)
+	if ok || idx != 0 || wrapped {
+		t.Errorf("empty: idx=%d wrapped=%v ok=%v, want 0 false false", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_singleMatchSelfFromCursor(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Buy groceries"),
+		locFromTitle(p, "Design"),
+		locFromTitle(p, "Read book"),
+	}
+	idx, wrapped, ok := nextMatch(locs, "design", false, 1, true)
+	if !ok || idx != 1 || wrapped {
+		t.Errorf("self-match: idx=%d wrapped=%v ok=%v, want 1 false true", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_fromBeyondEndForwardWraps(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Design A"),
+		locFromTitle(p, "Buy groceries"),
+	}
+	idx, wrapped, ok := nextMatch(locs, "design", false, 2, true)
+	if !ok || idx != 0 || !wrapped {
+		t.Errorf("from beyond end: idx=%d wrapped=%v ok=%v, want 0 true true", idx, wrapped, ok)
+	}
+}
+
+func TestNextMatch_fromNegativeBackwardWraps(t *testing.T) {
+	p := &store.Project{Name: "work"}
+	locs := []taskLoc{
+		locFromTitle(p, "Buy groceries"),
+		locFromTitle(p, "Design A"),
+	}
+	idx, wrapped, ok := nextMatch(locs, "design", false, -1, false)
+	if !ok || idx != 1 || !wrapped {
+		t.Errorf("from negative: idx=%d wrapped=%v ok=%v, want 1 true true", idx, wrapped, ok)
+	}
+}
