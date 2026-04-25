@@ -269,6 +269,26 @@ func TestRenderTaskLine_highlightsTitleSubstring(t *testing.T) {
 	}
 }
 
+func TestRenderTaskLine_highlightsProjectChipInAllProjects(t *testing.T) {
+	st := testStylesWithColor(t)
+	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}
+	row := renderTaskLine(st, task, taskLineInput{
+		Width:       60,
+		AllProjects: true,
+		ProjectName: "personal",
+		SearchQuery: "person",
+	})
+	plain := stripANSI(row)
+	if !strings.Contains(plain, "[personal]") {
+		t.Fatalf("rendered row missing chip: %q", plain)
+	}
+	hlOpen := st.SearchHighlight.Render("X")
+	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
+	if !strings.Contains(row, hlOpen+"person") {
+		t.Errorf("expected highlight inside the chip\nrow: %q", row)
+	}
+}
+
 func TestRenderTaskLine_noQueryNoHighlight(t *testing.T) {
 	st := testStylesWithColor(t)
 	task := model.Task{Status: model.StatusPending, Title: "Buy groceries"}

@@ -342,7 +342,12 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 		case model.StatusDone, model.StatusCancelled:
 			chipStyle = chipStyle.Strikethrough(true)
 		}
-		chip = chipStyle.Render("[" + o.ProjectName + "] ")
+		chipText := "[" + o.ProjectName + "] "
+		if o.SearchQuery == "" {
+			chip = chipStyle.Render(chipText)
+		} else {
+			chip = highlightMatch(chipText, o.SearchQuery, chipStyle, st.SearchHighlight)
+		}
 	}
 
 	// Reserve cells for the row's fixed columns so a long title gets
