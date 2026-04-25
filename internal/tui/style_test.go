@@ -70,6 +70,32 @@ func TestStyles_trueColor_emitsColorEscape(t *testing.T) {
 	}
 }
 
+func TestModePillStyle_distinctPerMode(t *testing.T) {
+	r := lipgloss.NewRenderer(nil, termenv.WithProfile(termenv.TrueColor))
+	r.SetColorProfile(termenv.TrueColor)
+	st := NewStylesWithRenderer(r, StyleOptions{})
+	modes := []Mode{ModeNormal, ModePrompt, ModeSearch, ModeDelete, ModePicker, ModeHelp}
+	seen := make(map[string]Mode, len(modes))
+	for _, m := range modes {
+		out := st.ModePillStyle(m).Render(m.String())
+		if other, dup := seen[out]; dup {
+			t.Errorf("mode %v shares pill rendering with %v: %q", m, other, out)
+		}
+		seen[out] = m
+	}
+}
+
+func TestModePillStyle_promptAndEditShareInsertColor(t *testing.T) {
+	r := lipgloss.NewRenderer(nil, termenv.WithProfile(termenv.TrueColor))
+	r.SetColorProfile(termenv.TrueColor)
+	st := NewStylesWithRenderer(r, StyleOptions{})
+	prompt := st.ModePillStyle(ModePrompt).Render("INSERT")
+	edit := st.ModePillStyle(ModeEdit).Render("INSERT")
+	if prompt != edit {
+		t.Errorf("ModePrompt and ModeEdit must share INSERT styling:\nprompt=%q\nedit  =%q", prompt, edit)
+	}
+}
+
 // TestStyledInput_caretRendersAsReverseBlock pins the visible-caret invariant:
 // after Focus, the textinput's cursor cell must emit reverse-video so the
 // accent foreground reads as a background block. ASCII-profile golden tests

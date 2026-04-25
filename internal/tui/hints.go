@@ -45,7 +45,7 @@ type hintInput struct {
 }
 
 func renderHintBar(st *Styles, in hintInput) string {
-	pill := st.ModePill.Render(in.Mode.String())
+	pill := st.ModePillStyle(in.Mode).Render(in.Mode.String())
 	mid := middleHints(st, in)
 	meta := metaHints(st, in)
 

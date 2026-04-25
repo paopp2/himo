@@ -33,7 +33,15 @@ type Styles struct {
 
 	ChipMuted  lipgloss.Style
 	ChipActive lipgloss.Style
-	ModePill   lipgloss.Style
+
+	// ModePill* are per-mode pill styles. The pill base is shared (bold,
+	// black foreground, padding); only the background changes per mode.
+	ModePillNormal lipgloss.Style
+	ModePillInsert lipgloss.Style
+	ModePillSearch lipgloss.Style
+	ModePillDelete lipgloss.Style
+	ModePillPicker lipgloss.Style
+	ModePillHelp   lipgloss.Style
 
 	TitleBacklog   lipgloss.Style
 	TitlePending   lipgloss.Style
@@ -65,6 +73,10 @@ func NewStylesWithRenderer(r *lipgloss.Renderer, opts StyleOptions) *Styles {
 	accent := lipgloss.AdaptiveColor{Light: "#008787", Dark: "#008787"}
 	errc := lipgloss.AdaptiveColor{Light: "#b91c1c", Dark: "#ef4444"}
 	ok := lipgloss.AdaptiveColor{Light: "#15803d", Dark: "#22c55e"}
+	// Pill-only accents -- not promoted to top-level palette colors because
+	// they're scoped to the mode pill and shouldn't drift into chips/titles.
+	pillBlue := lipgloss.AdaptiveColor{Light: "#2563eb", Dark: "#3b82f6"}
+	pillPurple := lipgloss.AdaptiveColor{Light: "#7c3aed", Dark: "#a855f7"}
 	// Cursor row tint: a dark/light teal washed toward the pane background,
 	// roughly the accent (#008787) blended ~15% over black/white. Subtle but
 	// reads as part of the project palette instead of neutral gray.
@@ -86,7 +98,13 @@ func NewStylesWithRenderer(r *lipgloss.Renderer, opts StyleOptions) *Styles {
 
 		ChipMuted:  r.NewStyle().Foreground(muted),
 		ChipActive: r.NewStyle().Foreground(accent).Bold(true),
-		ModePill:   r.NewStyle().Foreground(lipgloss.Color("0")).Background(accent).Bold(true).Padding(0, 1),
+
+		ModePillNormal: pillBase(r).Background(accent),
+		ModePillInsert: pillBase(r).Background(ok),
+		ModePillSearch: pillBase(r).Background(pillBlue),
+		ModePillDelete: pillBase(r).Background(errc),
+		ModePillPicker: pillBase(r).Background(pillPurple),
+		ModePillHelp:   pillBase(r).Background(muted),
 
 		TitleBacklog:   r.NewStyle().Italic(true).Foreground(muted),
 		TitlePending:   r.NewStyle(),
@@ -102,6 +120,32 @@ func NewStylesWithRenderer(r *lipgloss.Renderer, opts StyleOptions) *Styles {
 		GlyphDone:      r.NewStyle().Foreground(ok),
 		GlyphCancelled: r.NewStyle().Foreground(errc).Faint(true),
 	}
+}
+
+// pillBase is the shared mode-pill style. Per-mode pills only override
+// the background.
+func pillBase(r *lipgloss.Renderer) lipgloss.Style {
+	return r.NewStyle().Foreground(lipgloss.Color("0")).Bold(true).Padding(0, 1)
+}
+
+// ModePillStyle returns the pill style for the given mode. ModePrompt
+// and ModeEdit share the INSERT pill since they render the same label.
+func (s *Styles) ModePillStyle(m Mode) lipgloss.Style {
+	switch m {
+	case ModeNormal:
+		return s.ModePillNormal
+	case ModePrompt, ModeEdit:
+		return s.ModePillInsert
+	case ModeSearch:
+		return s.ModePillSearch
+	case ModeDelete:
+		return s.ModePillDelete
+	case ModePicker:
+		return s.ModePillPicker
+	case ModeHelp:
+		return s.ModePillHelp
+	}
+	return s.ModePillNormal
 }
 
 // StatusGlyph returns the glyph for s, using ASCII when AsciiGlyphs is set.
