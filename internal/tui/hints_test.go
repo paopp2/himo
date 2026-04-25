@@ -71,7 +71,7 @@ func TestMetaHints_searchMatchPosition(t *testing.T) {
 	got := stripANSI(metaHints(st, hintInput{
 		Mode:           ModeNormal,
 		SearchActive:   "groc",
-		SearchMatchIdx: 1,
+		SearchMatchPos: 1,
 		SearchTotal:    3,
 	}))
 	if !strings.Contains(got, "match 1 / 3") {
@@ -84,7 +84,7 @@ func TestMetaHints_searchTotalOnlyWhenOffMatch(t *testing.T) {
 	got := stripANSI(metaHints(st, hintInput{
 		Mode:           ModeNormal,
 		SearchActive:   "groc",
-		SearchMatchIdx: -1,
+		SearchMatchPos: 0,
 		SearchTotal:    3,
 	}))
 	if !strings.Contains(got, "3 matches") {
@@ -97,7 +97,7 @@ func TestMetaHints_searchNoMatches(t *testing.T) {
 	got := stripANSI(metaHints(st, hintInput{
 		Mode:           ModeNormal,
 		SearchActive:   "xyz",
-		SearchMatchIdx: -1,
+		SearchMatchPos: 0,
 		SearchTotal:    0,
 	}))
 	if !strings.Contains(got, "no matches") {

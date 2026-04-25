@@ -43,7 +43,7 @@ type hintInput struct {
 	DeleteTitle    string
 	Banner         string
 	SearchActive   string
-	SearchMatchIdx int // -1 when cursor is not on a match
+	SearchMatchPos int // 1-based position of cursor in matches; 0 when off-match
 	SearchTotal    int
 }
 
@@ -112,8 +112,8 @@ func searchIndicator(st *Styles, in hintInput) string {
 	switch {
 	case in.SearchTotal == 0:
 		return st.Muted.Render("no matches")
-	case in.SearchMatchIdx >= 0:
-		return st.Muted.Render(fmt.Sprintf("match %d / %d", in.SearchMatchIdx, in.SearchTotal))
+	case in.SearchMatchPos > 0:
+		return st.Muted.Render(fmt.Sprintf("match %d / %d", in.SearchMatchPos, in.SearchTotal))
 	default:
 		return st.Muted.Render(fmt.Sprintf("%d matches", in.SearchTotal))
 	}

@@ -172,10 +172,10 @@ func renderView(m Model) string {
 
 	query := m.activeSearchQuery()
 	matches := matchIndices(locs, query, m.allProjects)
-	matchIdx := -1
+	matchPos := 0
 	for i, p := range matches {
 		if p == m.cursor {
-			matchIdx = i + 1
+			matchPos = i + 1
 			break
 		}
 	}
@@ -187,7 +187,7 @@ func renderView(m Model) string {
 		DeleteTitle:    deleteTitle(m, tasks),
 		Banner:         m.banner,
 		SearchActive:   query,
-		SearchMatchIdx: matchIdx,
+		SearchMatchPos: matchPos,
 		SearchTotal:    len(matches),
 	})
 	view := top + "\n"
