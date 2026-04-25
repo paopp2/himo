@@ -151,3 +151,30 @@ func TestRenderList_usesStyledRows(t *testing.T) {
 		t.Errorf("list still has raw markers:\n%s", out)
 	}
 }
+
+func TestRenderTaskLine_editingShowsBuffer(t *testing.T) {
+	st := testStyles(t)
+	line := renderTaskLine(st, model.Task{
+		Status: model.StatusPending, Title: "Original",
+	}, taskLineInput{Width: 60, Cursor: true, Editing: true, EditBuf: "Buffered"})
+	if !strings.Contains(line, "Buffered") {
+		t.Errorf("editing row missing buffer text: %q", line)
+	}
+	if strings.Contains(line, "Original") {
+		t.Errorf("editing row should hide original title; got: %q", line)
+	}
+	// Caret block (inputCursor) must appear.
+	if !strings.Contains(line, "█") {
+		t.Errorf("editing row missing caret: %q", line)
+	}
+}
+
+func TestRenderTaskLine_editingDoneTaskNoStrikethrough(t *testing.T) {
+	st := testStyles(t)
+	line := renderTaskLine(st, model.Task{
+		Status: model.StatusDone, Title: "Done task",
+	}, taskLineInput{Width: 60, Cursor: true, Editing: true, EditBuf: "Live"})
+	if !strings.Contains(line, "Live") {
+		t.Errorf("editing row missing buffer text on done task: %q", line)
+	}
+}

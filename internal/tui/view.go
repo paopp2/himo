@@ -214,7 +214,14 @@ func renderListPane(m Model, locs []taskLoc, tasks []model.Task, width, height i
 
 	rows := make([]string, len(tasks))
 	for i, t := range tasks {
-		opts := taskLineInput{Width: width - 2, Cursor: i == m.cursor && !m.prompting}
+		opts := taskLineInput{
+			Width:  width - 2,
+			Cursor: i == m.cursor && !m.prompting,
+		}
+		if i == m.cursor && m.editing {
+			opts.Editing = true
+			opts.EditBuf = m.editBuf
+		}
 		if m.allProjects && i < len(locs) {
 			opts.AllProjects = true
 			opts.ProjectName = locs[i].proj.Name
@@ -293,6 +300,8 @@ type taskLineInput struct {
 	Cursor      bool
 	AllProjects bool
 	ProjectName string
+	Editing     bool
+	EditBuf     string
 }
 
 // renderTaskLine returns a single styled row:
@@ -314,7 +323,12 @@ func renderTaskLine(st *Styles, t model.Task, o taskLineInput) string {
 	// pre-rendered (ANSI-laden) chip into the title and then re-rendering
 	// with TitleStyle triggers lipgloss's char-by-char Strikethrough path,
 	// which wraps each inner ESC byte individually and mangles the stream.
-	title := st.TitleStyle(t.Status).Render(t.Title)
+	var title string
+	if o.Editing {
+		title = st.Base.Render(o.EditBuf) + inputCursor(st)
+	} else {
+		title = st.TitleStyle(t.Status).Render(t.Title)
+	}
 	if o.AllProjects && o.ProjectName != "" {
 		chipStyle := st.Muted
 		switch t.Status {
