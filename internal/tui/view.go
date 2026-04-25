@@ -40,6 +40,7 @@ func renderHelp(st *Styles, width int) string {
 		{"g/G", "top / bottom"},
 		{"Ctrl+d/u", "half page"},
 		{"/", "search"},
+		{"n/N", "next / prev match"},
 		{"Tab", "next project"},
 		{"S-Tab", "prev project"},
 		{"P", "project picker"},
