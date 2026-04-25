@@ -10,7 +10,7 @@ Set Width 1600
 Set Height 900
 Set Padding 32
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 80ms
+Set TypingSpeed 40ms
 Set WindowBar "Colorful"
 Set WindowBarSize 40
 
