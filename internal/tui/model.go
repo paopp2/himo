@@ -639,9 +639,7 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 func (m Model) updateEdit(msg tea.KeyMsg) Model {
 	switch msg.Type {
 	case tea.KeyEsc, tea.KeyCtrlC:
-		m.editing = false
-		m.editBuf = ""
-		m.editOrig = ""
+		m.clearEdit()
 	case tea.KeyEnter:
 		m.commitEdit()
 	case tea.KeyBackspace:
@@ -656,15 +654,16 @@ func (m Model) updateEdit(msg tea.KeyMsg) Model {
 	return m
 }
 
-// commitEdit writes the buffered title to the cursor task. Empty or unchanged
-// buffers are treated as cancel (no save). On save error the in-memory mutation
-// is rolled back and the undo entry is dropped.
+func (m *Model) clearEdit() {
+	m.editing = false
+	m.editBuf = ""
+	m.editOrig = ""
+}
+
+// commitEdit writes the buffered title to the cursor task, rolling back the
+// in-memory mutation and dropping the undo entry if the save fails.
 func (m *Model) commitEdit() {
-	defer func() {
-		m.editing = false
-		m.editBuf = ""
-		m.editOrig = ""
-	}()
+	defer m.clearEdit()
 	proj, doc, idx, ok := m.currentTaskItem()
 	if !ok {
 		return

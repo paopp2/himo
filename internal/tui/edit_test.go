@@ -61,7 +61,6 @@ func TestEdit_e_entersEditMode(t *testing.T) {
 func TestEdit_typesAndCommits(t *testing.T) {
 	m := NewModel(testProject(t))
 	m = keypress(t, m, keyRune('e'))
-	// Clear the buffer with backspaces.
 	for range m.editBuf {
 		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
@@ -73,23 +72,19 @@ func TestEdit_typesAndCommits(t *testing.T) {
 	if got := firstTaskTitle(t, m); got != "Renamed" {
 		t.Errorf("title after edit = %q, want %q", got, "Renamed")
 	}
-	// Verify it persisted to disk.
 	reloaded, err := store.LoadProject(m.project.Dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	titles := make([]string, 0)
-	for _, task := range reloaded.AllTasks() {
-		titles = append(titles, task.Title)
-	}
 	found := false
-	for _, tt := range titles {
-		if tt == "Renamed" {
+	for _, task := range reloaded.AllTasks() {
+		if task.Title == "Renamed" {
 			found = true
+			break
 		}
 	}
 	if !found {
-		t.Errorf("title %q not found in reloaded project; titles=%v", "Renamed", titles)
+		t.Error(`"Renamed" not persisted to disk`)
 	}
 }
 
@@ -248,7 +243,9 @@ func TestEdit_allProjectsTargetsCorrectProject(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, f := range []string{"backlog.md", "done.md"} {
-			os.WriteFile(filepath.Join(dir, f), nil, 0o644)
+			if err := os.WriteFile(filepath.Join(dir, f), nil, 0o644); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	makeProj("a", "- [ ] A-task\n")

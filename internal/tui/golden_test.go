@@ -37,17 +37,11 @@ func TestRenderView_goldenEdit(t *testing.T) {
 	m := NewModel(testProject(t))
 	m.width, m.height = 120, 30
 	m.styles = testStyles(t)
-	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	m = next.(Model)
-	// Clear the buffer (initialises to the original title).
+	m = keypress(t, m, keyRune('e'))
 	for range m.editBuf {
-		next, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
-		m = next.(Model)
+		m = keypress(t, m, tea.KeyMsg{Type: tea.KeyBackspace})
 	}
-	for _, r := range "Buy gro" {
-		next, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
-		m = next.(Model)
-	}
+	m = typeString(t, m, "Buy gro")
 
 	got := renderView(m)
 	path := filepath.Join("testdata", "golden", "edit_120x30.txt")
