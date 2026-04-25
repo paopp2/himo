@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/muesli/termenv"
 
 	"github.com/paopp2/himo/internal/model"
@@ -255,7 +256,7 @@ func TestRenderTaskLine_highlightsTitleSubstring(t *testing.T) {
 		Width:       60,
 		SearchQuery: "groc",
 	})
-	plain := stripANSI(row)
+	plain := ansi.Strip(row)
 	if !strings.Contains(plain, "Buy groceries") {
 		t.Fatalf("rendered row missing title: %q", plain)
 	}
@@ -278,7 +279,7 @@ func TestRenderTaskLine_highlightsProjectChipInAllProjects(t *testing.T) {
 		ProjectName: "personal",
 		SearchQuery: "person",
 	})
-	plain := stripANSI(row)
+	plain := ansi.Strip(row)
 	if !strings.Contains(plain, "[personal]") {
 		t.Fatalf("rendered row missing chip: %q", plain)
 	}
@@ -313,8 +314,8 @@ func TestRenderTaskLine_truncatedTitleMatchBeforeCut(t *testing.T) {
 		Width:       20,
 		SearchQuery: "Buy",
 	})
-	if !strings.Contains(stripANSI(row), "…") {
-		t.Fatalf("expected ellipsis in truncated row: %q", stripANSI(row))
+	if !strings.Contains(ansi.Strip(row), "…") {
+		t.Fatalf("expected ellipsis in truncated row: %q", ansi.Strip(row))
 	}
 	hlOpen := st.SearchHighlight.Render("X")
 	hlOpen = hlOpen[:strings.Index(hlOpen, "X")]
@@ -331,7 +332,7 @@ func TestRenderTaskLine_truncatedTitleMatchAfterCutNoHighlight(t *testing.T) {
 		Width:       20,
 		SearchQuery: "tomorrow",
 	})
-	plain := stripANSI(row)
+	plain := ansi.Strip(row)
 	if !strings.Contains(plain, "…") {
 		t.Fatalf("expected ellipsis in truncated row: %q", plain)
 	}
@@ -353,7 +354,7 @@ func TestRenderTaskLine_cursorRowPreservesHighlight(t *testing.T) {
 		Cursor:      true,
 		SearchQuery: "groc",
 	})
-	plain := stripANSI(row)
+	plain := ansi.Strip(row)
 	if !strings.Contains(plain, "Buy groceries") {
 		t.Fatalf("rendered cursor row missing title: %q", plain)
 	}

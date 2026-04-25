@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestHintBar_normalMode(t *testing.T) {
@@ -68,7 +70,7 @@ func TestHintBar_insertPillForEdit(t *testing.T) {
 
 func TestMetaHints_searchMatchPosition(t *testing.T) {
 	st := NewStyles(StyleOptions{NoColor: true})
-	got := stripANSI(metaHints(st, hintInput{
+	got := ansi.Strip(metaHints(st, hintInput{
 		Mode:           ModeNormal,
 		SearchActive:   "groc",
 		SearchMatchPos: 1,
@@ -81,7 +83,7 @@ func TestMetaHints_searchMatchPosition(t *testing.T) {
 
 func TestMetaHints_searchTotalOnlyWhenOffMatch(t *testing.T) {
 	st := NewStyles(StyleOptions{NoColor: true})
-	got := stripANSI(metaHints(st, hintInput{
+	got := ansi.Strip(metaHints(st, hintInput{
 		Mode:           ModeNormal,
 		SearchActive:   "groc",
 		SearchMatchPos: 0,
@@ -94,7 +96,7 @@ func TestMetaHints_searchTotalOnlyWhenOffMatch(t *testing.T) {
 
 func TestMetaHints_searchNoMatches(t *testing.T) {
 	st := NewStyles(StyleOptions{NoColor: true})
-	got := stripANSI(metaHints(st, hintInput{
+	got := ansi.Strip(metaHints(st, hintInput{
 		Mode:           ModeNormal,
 		SearchActive:   "xyz",
 		SearchMatchPos: 0,
@@ -107,7 +109,7 @@ func TestMetaHints_searchNoMatches(t *testing.T) {
 
 func TestMetaHints_noIndicatorWhenSearchInactive(t *testing.T) {
 	st := NewStyles(StyleOptions{NoColor: true})
-	got := stripANSI(metaHints(st, hintInput{
+	got := ansi.Strip(metaHints(st, hintInput{
 		Mode: ModeNormal,
 	}))
 	if strings.Contains(got, "match") || strings.Contains(got, "matches") {
