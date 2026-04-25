@@ -632,7 +632,7 @@ func (m Model) updatePrompt(msg tea.KeyMsg) Model {
 		m.promptAbove = false
 	default:
 		var cmd tea.Cmd
-		m.promptInput, cmd = m.promptInput.Update(normalizeKeySpace(msg))
+		m.promptInput, cmd = m.promptInput.Update(msg)
 		_ = cmd
 	}
 	return m
@@ -752,18 +752,6 @@ func (m *Model) insertNewTask(title string) {
 	if !m.promptAbove && haveCursor && m.cursor+1 < len(m.visibleTasks()) {
 		m.cursor++
 	}
-}
-
-// normalizeKeySpace converts a bare KeySpace message (Runes==nil) into a
-// KeyRunes message so that textinput.Model.Update inserts the space character.
-// Bubbletea's terminal parser populates Runes with []rune{' '}, but tests that
-// construct tea.KeyMsg{Type: tea.KeySpace} directly leave Runes empty.
-func normalizeKeySpace(msg tea.KeyMsg) tea.KeyMsg {
-	if msg.Type == tea.KeySpace && len(msg.Runes) == 0 {
-		msg.Type = tea.KeyRunes
-		msg.Runes = []rune{' '}
-	}
-	return msg
 }
 
 // newStyledInput returns a textinput with himo's static accent caret;
