@@ -489,3 +489,58 @@ func TestEditorReturned_reconcilesPriority(t *testing.T) {
 		t.Errorf("disk = %+v, want reconciled", pr.Entries)
 	}
 }
+
+func TestPriority_endToEnd(t *testing.T) {
+	base := t.TempDir()
+	mkProj := func(name, body string) {
+		dir := filepath.Join(base, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "active.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mkProj("alpha", "- [/] a1\n- [/] a2\n")
+	mkProj("bravo", "- [/] b1\n")
+
+	m, err := NewModelFromBase(base, "alpha", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = m.WithAllProjects()
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+
+	// Initial order is alphabetical-then-file: a1, a2, b1.
+	if got := titles(m.visibleTasks()); got[0] != "a1" || got[1] != "a2" || got[2] != "b1" {
+		t.Fatalf("initial order = %v", got)
+	}
+
+	// Bump b1 to the top via two Shift+K presses.
+	m.cursor = 2
+	o1, _ := m.Update(keyRune('K'))
+	o2, _ := o1.(Model).Update(keyRune('K'))
+	got := titles(o2.(Model).visibleTasks())
+	if got[0] != "b1" {
+		t.Errorf("after two Shift+K: %v, want b1 first", got)
+	}
+
+	// Mark b1 done — it should drop out of priority and the next active
+	// (a1) takes the top.
+	m2 := o2.(Model)
+	m2.cursor = 0
+	o3, _ := m2.Update(keyRune('x'))
+	got = titles(o3.(Model).visibleTasks())
+	if len(got) != 2 || got[0] != "a1" {
+		t.Errorf("after done: %v, want [a1, a2]", got)
+	}
+
+	// Disk state matches.
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pr.Entries) != 2 || pr.Entries[0].Title != "a1" || pr.Entries[1].Title != "a2" {
+		t.Errorf("disk = %+v, want [a1, a2]", pr.Entries)
+	}
+}
