@@ -122,6 +122,7 @@ func (m *Model) applyHistory(from, to *[]historyEntry, op, okBanner string) {
 	}
 	m.cursor = entry.cursor
 	m.clampCursor()
+	m.reconcilePriority()
 	m.banner = okBanner
 }
 

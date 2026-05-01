@@ -159,13 +159,15 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 	if err != nil {
 		return Model{}, err
 	}
-	allProjects := loadAllProjectsForPriority(baseDir, projects)
+	allProjects, failedProjects := loadAllProjectsForPriority(baseDir, projects)
 	pr.Reconcile(store.ActiveEntries(allProjects))
-	if err := pr.Save(); err != nil {
-		return Model{}, err
+	if len(failedProjects) == 0 {
+		if err := pr.Save(); err != nil {
+			return Model{}, err
+		}
 	}
 	st := NewStyles(opts)
-	return Model{
+	m := Model{
 		project:     p,
 		filter:      DefaultFilter(),
 		baseDir:     baseDir,
@@ -176,22 +178,26 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 		pickerInput: newStyledInput(st),
 		promptInput: newStyledInput(st),
 		editInput:   newStyledInput(st),
-	}, nil
+	}
+	if len(failedProjects) > 0 {
+		m.banner = fmt.Sprintf("priority reconcile skipped (failed projects: %s); will retry on next clean load", strings.Join(failedProjects, ", "))
+	}
+	return m, nil
 }
 
 // loadAllProjectsForPriority loads every project under baseDir for the
-// purpose of priority reconciliation. Errors are swallowed per-project so
-// a single corrupt project does not block startup.
-func loadAllProjectsForPriority(baseDir string, names []string) []*store.Project {
-	out := make([]*store.Project, 0, len(names))
+// purpose of priority reconciliation. Errors are collected per-project so
+// callers can decide whether the partial set is safe to act on.
+func loadAllProjectsForPriority(baseDir string, names []string) (loaded []*store.Project, failed []string) {
 	for _, n := range names {
 		p, err := store.LoadProject(filepath.Join(baseDir, n))
 		if err != nil {
+			failed = append(failed, n)
 			continue
 		}
-		out = append(out, p)
+		loaded = append(loaded, p)
 	}
-	return out
+	return loaded, failed
 }
 
 // priorityForTest exposes the priority index for tests in this package.
@@ -211,9 +217,16 @@ func (m *Model) reconcilePriority() {
 		// Single-project view but priority is global — load all sibling
 		// projects so other-project entries are not mistakenly orphaned.
 		names, err := store.ListProjects(m.baseDir)
-		if err == nil {
-			projects = loadAllProjectsForPriority(m.baseDir, names)
+		if err != nil {
+			m.banner = "priority reconcile: " + err.Error()
+			return
 		}
+		loaded, failed := loadAllProjectsForPriority(m.baseDir, names)
+		if len(failed) > 0 {
+			m.banner = fmt.Sprintf("priority reconcile skipped (failed projects: %s)", strings.Join(failed, ", "))
+			return
+		}
+		projects = loaded
 	}
 	if len(projects) == 0 && m.project != nil {
 		projects = []*store.Project{m.project}
@@ -316,6 +329,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.banner = "editor: " + msg.err.Error()
 		}
+		if m.project == nil && m.editingProjectDir == "" {
+			m.banner = "editor: no project context"
+			return m, nil
+		}
 		dir := m.editingProjectDir
 		if dir == "" {
 			dir = m.project.Dir
@@ -331,21 +348,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		_ = m.saveWithBanner(reloaded, "save")
 		// Bind reloaded onto m.project when it matches the current project.
-		if reloaded.Dir == m.project.Dir {
+		if m.project != nil && reloaded.Dir == m.project.Dir {
 			m.project = reloaded
 		}
 		if m.allProjects {
 			m.reloadAllProjects()
 			// After cache refresh, rebind m.project by Dir match.
-			want := m.project.Dir
-			for _, p := range m.allProjectsCache {
-				if p.Dir == want {
-					m.project = p
-					break
+			if m.project != nil {
+				want := m.project.Dir
+				for _, p := range m.allProjectsCache {
+					if p.Dir == want {
+						m.project = p
+						break
+					}
 				}
 			}
 		}
-		m.reconcilePriority()
+		// Only reconcile if no error banner was set above; reconcilePriority's
+		// own banner-on-error would otherwise mask a more severe failure.
+		if m.banner == "" {
+			m.reconcilePriority()
+		}
 		m.editingProjectDir = ""
 	case tea.KeyMsg:
 		if m.showingHelp {

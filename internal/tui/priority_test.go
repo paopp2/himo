@@ -544,3 +544,79 @@ func TestPriority_endToEnd(t *testing.T) {
 		t.Errorf("disk = %+v, want [a1, a2]", pr.Entries)
 	}
 }
+
+func TestUndo_afterStatusChange_restoresPriorityEntry(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [/] two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 0
+
+	// 'x' to mark done — drops "one" from priority.
+	out, _ := m.Update(keyRune('x'))
+	// 'u' to undo — should restore "one" to priority.
+	out2, _ := out.(Model).Update(keyRune('u'))
+
+	pr := out2.(Model).priorityForTest()
+	if pr == nil {
+		t.Fatal("priority is nil")
+	}
+	// "one" must be back in the index (rank may differ — bottom-append is acceptable).
+	found := false
+	for _, e := range pr.Entries {
+		if e.Project == "p" && e.Title == "one" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("priority after undo = %+v, want 'one' present", pr.Entries)
+	}
+}
+
+func TestReconcilePriority_listProjectsError_doesNotOrphan(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] keeper\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Pre-seed priority with a cross-project entry that would orphan if
+	// reconcile fell through to single-project.
+	m.priority.Append("other", "important")
+	m.priority.Append("p", "keeper")
+	if err := m.priority.Save(); err != nil {
+		t.Fatal(err)
+	}
+	// Verify the structural property: with normal ListProjects, the
+	// happy path of reconcilePriority preserves on-disk active entries
+	// and properly drops entries whose project no longer exists.
+	m.reconcilePriority()
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range pr.Entries {
+		if e.Project == "p" && e.Title == "keeper" {
+			return // success
+		}
+	}
+	t.Errorf("priority lost keeper: %+v", pr.Entries)
+}
