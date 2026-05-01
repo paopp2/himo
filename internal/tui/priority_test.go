@@ -235,6 +235,61 @@ func TestReorder_persistsToDisk(t *testing.T) {
 	}
 }
 
+func TestReorder_inDefaultFilter_setsHint(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [ ] pen\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Default filter (pending+active+blocked) — reorder NOT enabled.
+	m.cursor = 0
+
+	out, _ := m.Update(keyRune('J'))
+	got := out.(Model)
+	if got.banner == "" {
+		t.Errorf("expected hint banner, got empty")
+	}
+	// And tasks did not move.
+	titles := titles(got.visibleTasks())
+	if titles[0] != "one" || titles[1] != "pen" {
+		t.Errorf("tasks moved on no-op gesture: %v", titles)
+	}
+}
+
+func TestReorder_onNonActiveTask_inSortStatus_setsHint(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] act\n- [ ] pen\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{All: true}
+	m.sort = SortStatus
+	// SortStatus puts active first, so cursor=1 lands on the pending task.
+	m.cursor = 1
+
+	out, _ := m.Update(keyRune('J'))
+	got := out.(Model)
+	if got.banner == "" {
+		t.Errorf("expected hint banner on non-active reorder")
+	}
+}
+
 func TestVisibleTasks_AllProjectsActive_OrdersByGlobalPriority(t *testing.T) {
 	base := t.TempDir()
 	mkProj := func(name, body string) {
