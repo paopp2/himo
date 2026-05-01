@@ -86,6 +86,39 @@ func TestVisibleTasks_ActiveFilter_OrdersByPriority(t *testing.T) {
 	}
 }
 
+func TestVisibleTasks_SortStatus_ActiveGroupOrdersByPriority(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// File order: alpha (active), pending, bravo (active).
+	// SortStatus puts the two actives first; priority decides their order.
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] alpha\n- [ ] pen\n- [/] bravo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prDir := filepath.Join(base, ".himo")
+	if err := os.MkdirAll(prDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(prDir, "active-priority"),
+		[]byte("p\tbravo\np\talpha\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{All: true}
+	m.sort = SortStatus
+	got := titles(m.visibleTasks())
+	// First two are actives in priority order; third is pending.
+	if got[0] != "bravo" || got[1] != "alpha" || got[2] != "pen" {
+		t.Errorf("got %v, want [bravo alpha pen]", got)
+	}
+}
+
 func TestVisibleTasks_AllProjectsActive_OrdersByGlobalPriority(t *testing.T) {
 	base := t.TempDir()
 	mkProj := func(name, body string) {

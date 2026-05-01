@@ -593,6 +593,13 @@ func (m Model) visibleTaskLocations() []taskLoc {
 			if ra != rb {
 				return ra < rb
 			}
+			// Within the active rank group, priority drives the order.
+			if a.doc.Items[a.idx].(store.TaskItem).Task.Status == model.StatusActive {
+				pa, pb := m.priorityRank(a), m.priorityRank(b)
+				if pa != pb {
+					return pa < pb
+				}
+			}
 			return projIdx[a.proj] < projIdx[b.proj]
 		})
 	}
