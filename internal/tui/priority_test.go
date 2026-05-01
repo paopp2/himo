@@ -380,6 +380,36 @@ func TestEdit_renamesPriorityEntry(t *testing.T) {
 	}
 }
 
+func TestDelete_removesPriorityEntry(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] doomed\n- [/] survivor\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 0
+	// Press 'd' then 'y' to confirm.
+	out, _ := m.Update(keyRune('d'))
+	out2, _ := out.(Model).Update(keyRune('y'))
+	_ = out2.(Model)
+
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pr.Entries) != 1 || pr.Entries[0].Title != "survivor" {
+		t.Errorf("priority = %+v, want [survivor]", pr.Entries)
+	}
+}
+
 func TestVisibleTasks_AllProjectsActive_OrdersByGlobalPriority(t *testing.T) {
 	base := t.TempDir()
 	mkProj := func(name, body string) {

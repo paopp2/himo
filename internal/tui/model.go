@@ -957,6 +957,12 @@ func (m *Model) deleteCurrent() {
 		return
 	}
 	m.commitUndo()
+	if ti, ok := removed.(store.TaskItem); ok && ti.Task.Status == model.StatusActive && m.priority != nil {
+		m.priority.Remove(proj.Name, ti.Task.Title)
+		if err := m.priority.Save(); err != nil {
+			m.banner = "priority save: " + err.Error()
+		}
+	}
 	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {
 		m.cursor--
 	}
