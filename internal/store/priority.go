@@ -105,3 +105,35 @@ func (p *Priority) Reconcile(actives []PriorityEntry) {
 	}
 	p.Entries = kept
 }
+
+// IndexOf returns the index of (project, title) in p.Entries, or -1 if absent.
+func (p *Priority) IndexOf(project, title string) int {
+	for i, e := range p.Entries {
+		if e.Project == project && e.Title == title {
+			return i
+		}
+	}
+	return -1
+}
+
+// SwapUp swaps (project, title) with the entry above. Returns true if
+// the swap happened, false if the entry is at the top or absent.
+func (p *Priority) SwapUp(project, title string) bool {
+	i := p.IndexOf(project, title)
+	if i <= 0 {
+		return false
+	}
+	p.Entries[i-1], p.Entries[i] = p.Entries[i], p.Entries[i-1]
+	return true
+}
+
+// SwapDown swaps (project, title) with the entry below. Returns true if
+// the swap happened, false if the entry is at the bottom or absent.
+func (p *Priority) SwapDown(project, title string) bool {
+	i := p.IndexOf(project, title)
+	if i < 0 || i >= len(p.Entries)-1 {
+		return false
+	}
+	p.Entries[i+1], p.Entries[i] = p.Entries[i], p.Entries[i+1]
+	return true
+}

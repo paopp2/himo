@@ -193,3 +193,74 @@ func TestPriorityReconcile_preservesOrderOfSurvivors(t *testing.T) {
 		t.Errorf("survivor order lost: %+v", p.Entries)
 	}
 }
+
+func TestPriorityIndexOf(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "a", Title: "x"},
+		{Project: "b", Title: "y"},
+	}}
+	if got := p.IndexOf("b", "y"); got != 1 {
+		t.Errorf("IndexOf(b,y) = %d, want 1", got)
+	}
+	if got := p.IndexOf("nope", "missing"); got != -1 {
+		t.Errorf("IndexOf(nope,missing) = %d, want -1", got)
+	}
+}
+
+func TestPrioritySwapUp(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "a", Title: "x"},
+		{Project: "b", Title: "y"},
+		{Project: "c", Title: "z"},
+	}}
+	if !p.SwapUp("b", "y") {
+		t.Fatal("SwapUp returned false on movable entry")
+	}
+	if p.Entries[0].Title != "y" || p.Entries[1].Title != "x" {
+		t.Errorf("after swap up: %+v", p.Entries)
+	}
+}
+
+func TestPrioritySwapUp_atTopIsNoOp(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "a", Title: "x"},
+		{Project: "b", Title: "y"},
+	}}
+	if p.SwapUp("a", "x") {
+		t.Error("SwapUp at top returned true, want false")
+	}
+	if p.Entries[0].Title != "x" {
+		t.Errorf("entries mutated: %+v", p.Entries)
+	}
+}
+
+func TestPrioritySwapUp_absentReturnsFalse(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{{Project: "a", Title: "x"}}}
+	if p.SwapUp("nope", "missing") {
+		t.Error("SwapUp on absent returned true")
+	}
+}
+
+func TestPrioritySwapDown(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "a", Title: "x"},
+		{Project: "b", Title: "y"},
+		{Project: "c", Title: "z"},
+	}}
+	if !p.SwapDown("a", "x") {
+		t.Fatal("SwapDown returned false on movable entry")
+	}
+	if p.Entries[0].Title != "y" || p.Entries[1].Title != "x" {
+		t.Errorf("after swap down: %+v", p.Entries)
+	}
+}
+
+func TestPrioritySwapDown_atBottomIsNoOp(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "a", Title: "x"},
+		{Project: "b", Title: "y"},
+	}}
+	if p.SwapDown("b", "y") {
+		t.Error("SwapDown at bottom returned true")
+	}
+}
