@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"math"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -595,7 +596,32 @@ func (m Model) visibleTaskLocations() []taskLoc {
 			return projIdx[a.proj] < projIdx[b.proj]
 		})
 	}
+	if m.priority != nil && isActiveOnlyFilter(m.filter) {
+		sort.SliceStable(out, func(i, j int) bool {
+			return m.priorityRank(out[i]) < m.priorityRank(out[j])
+		})
+	}
 	return out
+}
+
+// isActiveOnlyFilter reports whether f narrows to a single active-only status.
+func isActiveOnlyFilter(f Filter) bool {
+	return !f.All && len(f.Statuses) == 1 && f.Statuses[0] == model.StatusActive
+}
+
+// priorityRank returns the index of loc's task in the priority list, or
+// math.MaxInt for tasks not in the index (these sort to the bottom). Only
+// meaningful for active tasks.
+func (m Model) priorityRank(loc taskLoc) int {
+	if m.priority == nil {
+		return 0
+	}
+	task := loc.doc.Items[loc.idx].(store.TaskItem).Task
+	idx := m.priority.IndexOf(loc.proj.Name, task.Title)
+	if idx < 0 {
+		return math.MaxInt
+	}
+	return idx
 }
 
 func (m Model) visibleTasks() []model.Task {
