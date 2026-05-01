@@ -264,3 +264,58 @@ func TestPrioritySwapDown_atBottomIsNoOp(t *testing.T) {
 		t.Error("SwapDown at bottom returned true")
 	}
 }
+
+func TestPriorityRename_preservesPosition(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "a", Title: "old"},
+		{Project: "a", Title: "stay"},
+	}}
+	p.Rename("a", "old", "new")
+	if p.Entries[0].Title != "new" || p.Entries[1].Title != "stay" {
+		t.Errorf("after rename: %+v", p.Entries)
+	}
+}
+
+func TestPriorityRename_absentIsNoOp(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{{Project: "a", Title: "x"}}}
+	p.Rename("a", "nope", "new")
+	if p.Entries[0].Title != "x" {
+		t.Errorf("mutated on absent: %+v", p.Entries)
+	}
+}
+
+func TestPriorityRemove(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "a", Title: "x"},
+		{Project: "b", Title: "y"},
+		{Project: "c", Title: "z"},
+	}}
+	p.Remove("b", "y")
+	if len(p.Entries) != 2 || p.Entries[0].Title != "x" || p.Entries[1].Title != "z" {
+		t.Errorf("after remove: %+v", p.Entries)
+	}
+}
+
+func TestPriorityRemove_absentIsNoOp(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{{Project: "a", Title: "x"}}}
+	p.Remove("nope", "missing")
+	if len(p.Entries) != 1 {
+		t.Errorf("mutated on absent: %+v", p.Entries)
+	}
+}
+
+func TestPriorityAppend(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{{Project: "a", Title: "x"}}}
+	p.Append("b", "y")
+	if len(p.Entries) != 2 || p.Entries[1] != (PriorityEntry{Project: "b", Title: "y"}) {
+		t.Errorf("after append: %+v", p.Entries)
+	}
+}
+
+func TestPriorityAppend_duplicateIsNoOp(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{{Project: "a", Title: "x"}}}
+	p.Append("a", "x")
+	if len(p.Entries) != 1 {
+		t.Errorf("duplicate appended: %+v", p.Entries)
+	}
+}

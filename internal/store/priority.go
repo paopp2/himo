@@ -137,3 +137,26 @@ func (p *Priority) SwapDown(project, title string) bool {
 	p.Entries[i+1], p.Entries[i] = p.Entries[i], p.Entries[i+1]
 	return true
 }
+
+// Rename rewrites the title of the entry matching (project, oldTitle).
+// Position is preserved. No-op if absent.
+func (p *Priority) Rename(project, oldTitle, newTitle string) {
+	if i := p.IndexOf(project, oldTitle); i >= 0 {
+		p.Entries[i].Title = newTitle
+	}
+}
+
+// Remove drops the entry matching (project, title). No-op if absent.
+func (p *Priority) Remove(project, title string) {
+	if i := p.IndexOf(project, title); i >= 0 {
+		p.Entries = append(p.Entries[:i], p.Entries[i+1:]...)
+	}
+}
+
+// Append adds (project, title) to the end. No-op if already present.
+func (p *Priority) Append(project, title string) {
+	if p.IndexOf(project, title) >= 0 {
+		return
+	}
+	p.Entries = append(p.Entries, PriorityEntry{Project: project, Title: title})
+}
