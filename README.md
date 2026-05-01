@@ -85,7 +85,7 @@ Vim-style. Left pane is the task list, right pane previews the highlighted task'
 
 Active task priority is stored in `<base_dir>/.himo/active-priority`, one
 task per line as `<project>\t<title>`. The file is reconciled with current
-active tasks on every load — new actives are appended, deleted/renamed
+active tasks on every load: new actives are appended, deleted/renamed
 tasks are dropped.
 
 ## Config

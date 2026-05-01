@@ -60,7 +60,6 @@ func LoadPriority(baseDir string) (*Priority, error) {
 	return p, nil
 }
 
-// render returns the on-disk byte representation of p.
 func (p *Priority) render() []byte {
 	var buf bytes.Buffer
 	for _, e := range p.Entries {
@@ -110,7 +109,6 @@ func (p *Priority) Reconcile(actives []PriorityEntry) {
 	p.Entries = kept
 }
 
-// IndexOf returns the index of (project, title) in p.Entries, or -1 if absent.
 func (p *Priority) IndexOf(project, title string) int {
 	for i, e := range p.Entries {
 		if e.Project == project && e.Title == title {
@@ -120,8 +118,8 @@ func (p *Priority) IndexOf(project, title string) int {
 	return -1
 }
 
-// SwapUp swaps (project, title) with the entry above. Returns true if
-// the swap happened, false if the entry is at the top or absent.
+// Mutators below are no-ops when the entry is absent.
+
 func (p *Priority) SwapUp(project, title string) bool {
 	i := p.IndexOf(project, title)
 	if i <= 0 {
@@ -131,8 +129,6 @@ func (p *Priority) SwapUp(project, title string) bool {
 	return true
 }
 
-// SwapDown swaps (project, title) with the entry below. Returns true if
-// the swap happened, false if the entry is at the bottom or absent.
 func (p *Priority) SwapDown(project, title string) bool {
 	i := p.IndexOf(project, title)
 	if i < 0 || i >= len(p.Entries)-1 {
@@ -143,21 +139,19 @@ func (p *Priority) SwapDown(project, title string) bool {
 }
 
 // Rename rewrites the title of the entry matching (project, oldTitle).
-// Position is preserved. No-op if absent.
+// Position is preserved.
 func (p *Priority) Rename(project, oldTitle, newTitle string) {
 	if i := p.IndexOf(project, oldTitle); i >= 0 {
 		p.Entries[i].Title = newTitle
 	}
 }
 
-// Remove drops the entry matching (project, title). No-op if absent.
 func (p *Priority) Remove(project, title string) {
 	if i := p.IndexOf(project, title); i >= 0 {
 		p.Entries = append(p.Entries[:i], p.Entries[i+1:]...)
 	}
 }
 
-// Append adds (project, title) to the end. No-op if already present.
 func (p *Priority) Append(project, title string) {
 	if p.IndexOf(project, title) >= 0 {
 		return

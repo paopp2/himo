@@ -185,9 +185,9 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 	return m, nil
 }
 
-// loadAllProjectsForPriority loads every project under baseDir for the
-// purpose of priority reconciliation. Errors are collected per-project so
-// callers can decide whether the partial set is safe to act on.
+// loadAllProjectsForPriority loads every project under baseDir. Errors are
+// collected per-project so callers can decide whether the partial set is
+// safe to act on.
 func loadAllProjectsForPriority(baseDir string, names []string) (loaded []*store.Project, failed []string) {
 	for _, n := range names {
 		p, err := store.LoadProject(filepath.Join(baseDir, n))
@@ -200,8 +200,15 @@ func loadAllProjectsForPriority(baseDir string, names []string) (loaded []*store
 	return loaded, failed
 }
 
-// priorityForTest exposes the priority index for tests in this package.
-func (m Model) priorityForTest() *store.Priority { return m.priority }
+// savePriority persists the priority index. Sets m.banner with `<action>: ...`
+// on failure. Returns the original error so callers can short-circuit.
+func (m *Model) savePriority(action string) error {
+	err := m.priority.Save()
+	if err != nil {
+		m.banner = action + ": " + err.Error()
+	}
+	return err
+}
 
 // reconcilePriority refreshes the priority index against the current set
 // of active tasks across the relevant scope and saves the result. Used
@@ -214,8 +221,8 @@ func (m *Model) reconcilePriority() {
 	if m.allProjects {
 		projects = m.allProjectsCache
 	} else if m.baseDir != "" {
-		// Single-project view but priority is global — load all sibling
-		// projects so other-project entries are not mistakenly orphaned.
+		// Single-project view but priority is global, so load all sibling
+		// projects to avoid orphaning entries from other projects.
 		names, err := store.ListProjects(m.baseDir)
 		if err != nil {
 			m.banner = "priority reconcile: " + err.Error()
@@ -232,9 +239,7 @@ func (m *Model) reconcilePriority() {
 		projects = []*store.Project{m.project}
 	}
 	m.priority.Reconcile(store.ActiveEntries(projects))
-	if err := m.priority.Save(); err != nil {
-		m.banner = "priority save: " + err.Error()
-	}
+	_ = m.savePriority("priority save")
 }
 
 // WithFilter returns m with its initial filter replaced. Used by main.go
@@ -648,8 +653,7 @@ func (m Model) visibleTaskLocations() []taskLoc {
 			if ra != rb {
 				return ra < rb
 			}
-			// Within the active rank group, priority drives the order.
-			if a.doc.Items[a.idx].(store.TaskItem).Task.Status == model.StatusActive {
+			if a.doc.Items[a.idx].(store.TaskItem).Task.Status == model.StatusActive && m.priority != nil {
 				pa, pb := m.priorityRank(a), m.priorityRank(b)
 				if pa != pb {
 					return pa < pb
@@ -657,8 +661,7 @@ func (m Model) visibleTaskLocations() []taskLoc {
 			}
 			return projIdx[a.proj] < projIdx[b.proj]
 		})
-	}
-	if m.priority != nil && isActiveOnlyFilter(m.filter) {
+	} else if m.priority != nil && isActiveOnlyFilter(m.filter) {
 		sort.SliceStable(out, func(i, j int) bool {
 			return m.priorityRank(out[i]) < m.priorityRank(out[j])
 		})
@@ -671,15 +674,13 @@ func isActiveOnlyFilter(f Filter) bool {
 	return !f.All && len(f.Statuses) == 1 && f.Statuses[0] == model.StatusActive
 }
 
-// reorder moves the cursor's active task one slot up (delta=-1) or down
-// (delta=+1) in the priority index, persists the index, and adjusts the
-// cursor to follow the moved task. No-op if the gesture is not applicable
-// in the current view, the task is not active, or the move is at the
-// boundary. Sets m.banner with a hint when the gesture is pressed in an
-// inapplicable view.
+const reorderHintMsg = "reorder available in [3] Active or by-status sort"
+
+// reorder moves the cursor's active task by delta in the priority index,
+// persisting and updating the cursor. No-op outside the supported views.
 func (m *Model) reorder(delta int) {
 	if !m.reorderEnabled() {
-		m.banner = "reorder available in [3] Active or by-status sort"
+		m.banner = reorderHintMsg
 		return
 	}
 	if m.priority == nil {
@@ -691,7 +692,7 @@ func (m *Model) reorder(delta int) {
 	}
 	task := doc.Items[idx].(store.TaskItem).Task
 	if task.Status != model.StatusActive {
-		m.banner = "reorder available in [3] Active or by-status sort"
+		m.banner = reorderHintMsg
 		return
 	}
 	var moved bool
@@ -703,11 +704,9 @@ func (m *Model) reorder(delta int) {
 	if !moved {
 		return
 	}
-	if err := m.priority.Save(); err != nil {
-		m.banner = "reorder save: " + err.Error()
+	if m.savePriority("reorder save") != nil {
 		return
 	}
-	// Cursor follows the task.
 	if delta < 0 && m.cursor > 0 {
 		m.cursor--
 	} else if delta > 0 && m.cursor+1 < len(m.visibleTasks()) {
@@ -725,9 +724,6 @@ func (m Model) reorderEnabled() bool {
 // math.MaxInt for tasks not in the index (these sort to the bottom). Only
 // meaningful for active tasks.
 func (m Model) priorityRank(loc taskLoc) int {
-	if m.priority == nil {
-		return 0
-	}
 	task := loc.doc.Items[loc.idx].(store.TaskItem).Task
 	idx := m.priority.IndexOf(loc.proj.Name, task.Title)
 	if idx < 0 {
@@ -852,8 +848,6 @@ func (m *Model) setStatus(s model.Status) {
 
 // applyPriorityForStatusChange updates the priority index when a task's
 // status crosses the active boundary. Idempotent for non-crossings.
-// Save errors set a banner but do not roll back the project save -- the
-// priority file will be reconciled on the next load.
 func (m *Model) applyPriorityForStatusChange(project string, oldT, newT model.Task) {
 	if m.priority == nil {
 		return
@@ -870,9 +864,7 @@ func (m *Model) applyPriorityForStatusChange(project string, oldT, newT model.Ta
 	default:
 		return
 	}
-	if err := m.priority.Save(); err != nil {
-		m.banner = "priority save: " + err.Error()
-	}
+	_ = m.savePriority("priority save")
 }
 
 // saveWithBanner persists proj. Returns nil on success, the original error on
@@ -984,9 +976,7 @@ func (m *Model) commitEdit() {
 	m.commitUndo()
 	if old.Task.Status == model.StatusActive && m.priority != nil {
 		m.priority.Rename(proj.Name, old.Task.Title, v)
-		if err := m.priority.Save(); err != nil {
-			m.banner = "priority save: " + err.Error()
-		}
+		_ = m.savePriority("priority save")
 	}
 }
 
@@ -1010,9 +1000,7 @@ func (m *Model) deleteCurrent() {
 	m.commitUndo()
 	if ti, ok := removed.(store.TaskItem); ok && ti.Task.Status == model.StatusActive && m.priority != nil {
 		m.priority.Remove(proj.Name, ti.Task.Title)
-		if err := m.priority.Save(); err != nil {
-			m.banner = "priority save: " + err.Error()
-		}
+		_ = m.savePriority("priority save")
 	}
 	if m.cursor >= len(m.visibleTasks()) && m.cursor > 0 {
 		m.cursor--

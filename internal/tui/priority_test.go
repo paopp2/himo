@@ -36,7 +36,7 @@ func TestNewModelFromBase_loadsAndReconcilesPriority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pr := m.priorityForTest()
+	pr := m.priority
 	want := []store.PriorityEntry{
 		{Project: "p", Title: "bravo"},
 		{Project: "p", Title: "alpha"},
@@ -467,7 +467,7 @@ func TestEditorReturned_reconcilesPriority(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, _ := m.Update(editorReturnedMsg{})
-	got := out.(Model).priorityForTest().Entries
+	got := out.(Model).priority.Entries
 	want := []store.PriorityEntry{
 		{Project: "p", Title: "keeper"},
 		{Project: "p", Title: "newcomer"},
@@ -567,7 +567,7 @@ func TestUndo_afterStatusChange_restoresPriorityEntry(t *testing.T) {
 	// 'u' to undo — should restore "one" to priority.
 	out2, _ := out.(Model).Update(keyRune('u'))
 
-	pr := out2.(Model).priorityForTest()
+	pr := out2.(Model).priority
 	if pr == nil {
 		t.Fatal("priority is nil")
 	}
