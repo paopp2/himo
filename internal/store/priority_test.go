@@ -68,3 +68,71 @@ func TestLoadPriority_skipsBlankAndMalformedLines(t *testing.T) {
 		t.Errorf("entries = %+v, want one (proj, title)", p.Entries)
 	}
 }
+
+func TestPrioritySave_writesAtomically(t *testing.T) {
+	base := t.TempDir()
+	p, err := LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Entries = []PriorityEntry{
+		{Project: "a", Title: "first"},
+		{Project: "b", Title: "second with\ttabbed?? nope just a title"},
+	}
+	if err := p.Save(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(p.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "a\tfirst\nb\tsecond with\ttabbed?? nope just a title\n"
+	if string(got) != want {
+		t.Errorf("file body = %q, want %q", string(got), want)
+	}
+	// .himo dir must exist.
+	if _, err := os.Stat(filepath.Join(base, ".himo")); err != nil {
+		t.Errorf("dir not created: %v", err)
+	}
+	// Verify there is no leftover .tmp.
+	entries, _ := os.ReadDir(filepath.Join(base, ".himo"))
+	for _, e := range entries {
+		if filepath.Ext(e.Name()) == ".tmp" {
+			t.Errorf("leftover tmp file: %s", e.Name())
+		}
+	}
+}
+
+func TestPrioritySave_emptyEntriesWritesEmptyFile(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadPriority(base)
+	if err := p.Save(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(p.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Errorf("empty save body = %q, want empty", string(got))
+	}
+}
+
+func TestPrioritySave_thenLoadRoundTrips(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadPriority(base)
+	p.Entries = []PriorityEntry{
+		{Project: "p1", Title: "t1"},
+		{Project: "p2", Title: "t2"},
+	}
+	if err := p.Save(); err != nil {
+		t.Fatal(err)
+	}
+	q, err := LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(q.Entries) != 2 || q.Entries[0] != p.Entries[0] || q.Entries[1] != p.Entries[1] {
+		t.Errorf("round-trip mismatch: got %+v, want %+v", q.Entries, p.Entries)
+	}
+}

@@ -69,3 +69,12 @@ func (p *Priority) render() []byte {
 	}
 	return buf.Bytes()
 }
+
+// Save writes the priority list atomically. The parent directory is created
+// if missing. An empty entry list yields an empty file.
+func (p *Priority) Save() error {
+	if err := os.MkdirAll(filepath.Dir(p.Path), 0o755); err != nil {
+		return err
+	}
+	return writeAtomic(p.Path, p.render())
+}
