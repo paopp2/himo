@@ -446,3 +446,46 @@ func TestVisibleTasks_AllProjectsActive_OrdersByGlobalPriority(t *testing.T) {
 		}
 	}
 }
+
+func TestEditorReturned_reconcilesPriority(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] keeper\n- [/] removed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate external edit: rewrite active.md with one removed and one new.
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] keeper\n- [/] newcomer\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := m.Update(editorReturnedMsg{})
+	got := out.(Model).priorityForTest().Entries
+	want := []store.PriorityEntry{
+		{Project: "p", Title: "keeper"},
+		{Project: "p", Title: "newcomer"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("priority = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("entry %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	// And the disk reflects the reconciled state.
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pr.Entries) != 2 || pr.Entries[1].Title != "newcomer" {
+		t.Errorf("disk = %+v, want reconciled", pr.Entries)
+	}
+}

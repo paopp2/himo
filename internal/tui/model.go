@@ -197,6 +197,33 @@ func loadAllProjectsForPriority(baseDir string, names []string) []*store.Project
 // priorityForTest exposes the priority index for tests in this package.
 func (m Model) priorityForTest() *store.Priority { return m.priority }
 
+// reconcilePriority refreshes the priority index against the current set
+// of active tasks across the relevant scope and saves the result. Used
+// after external edits where any (project, title) may have changed.
+func (m *Model) reconcilePriority() {
+	if m.priority == nil {
+		return
+	}
+	var projects []*store.Project
+	if m.allProjects {
+		projects = m.allProjectsCache
+	} else if m.baseDir != "" {
+		// Single-project view but priority is global — load all sibling
+		// projects so other-project entries are not mistakenly orphaned.
+		names, err := store.ListProjects(m.baseDir)
+		if err == nil {
+			projects = loadAllProjectsForPriority(m.baseDir, names)
+		}
+	}
+	if len(projects) == 0 && m.project != nil {
+		projects = []*store.Project{m.project}
+	}
+	m.priority.Reconcile(store.ActiveEntries(projects))
+	if err := m.priority.Save(); err != nil {
+		m.banner = "priority save: " + err.Error()
+	}
+}
+
 // WithFilter returns m with its initial filter replaced. Used by main.go
 // to restore a persisted filter on launch.
 func (m Model) WithFilter(f Filter) Model {
@@ -318,6 +345,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+		m.reconcilePriority()
 		m.editingProjectDir = ""
 	case tea.KeyMsg:
 		if m.showingHelp {
