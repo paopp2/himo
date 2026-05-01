@@ -78,3 +78,30 @@ func (p *Priority) Save() error {
 	}
 	return writeAtomic(p.Path, p.render())
 }
+
+// Reconcile aligns p.Entries with the universe of currently-active tasks.
+// 1. Any entry whose (project, title) is not in `actives` is dropped.
+// 2. Any (project, title) in `actives` not in p.Entries is appended in
+//    the order it appears in `actives`.
+// Order of surviving entries is preserved.
+func (p *Priority) Reconcile(actives []PriorityEntry) {
+	have := make(map[PriorityEntry]bool, len(actives))
+	for _, e := range actives {
+		have[e] = true
+	}
+	kept := p.Entries[:0]
+	keptSet := make(map[PriorityEntry]bool, len(p.Entries))
+	for _, e := range p.Entries {
+		if have[e] && !keptSet[e] {
+			kept = append(kept, e)
+			keptSet[e] = true
+		}
+	}
+	for _, e := range actives {
+		if !keptSet[e] {
+			kept = append(kept, e)
+			keptSet[e] = true
+		}
+	}
+	p.Entries = kept
+}

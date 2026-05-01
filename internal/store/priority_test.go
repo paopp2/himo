@@ -136,3 +136,60 @@ func TestPrioritySave_thenLoadRoundTrips(t *testing.T) {
 		t.Errorf("round-trip mismatch: got %+v, want %+v", q.Entries, p.Entries)
 	}
 }
+
+func TestPriorityReconcile_dropsOrphansAndAppendsNewcomers(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "alpha", Title: "kept"},
+		{Project: "alpha", Title: "orphan"},   // gone from actives
+		{Project: "bravo", Title: "alsokept"}, // still active
+	}}
+	actives := []PriorityEntry{
+		{Project: "alpha", Title: "kept"},
+		{Project: "bravo", Title: "alsokept"},
+		{Project: "alpha", Title: "newcomer"},
+	}
+	p.Reconcile(actives)
+	want := []PriorityEntry{
+		{Project: "alpha", Title: "kept"},
+		{Project: "bravo", Title: "alsokept"},
+		{Project: "alpha", Title: "newcomer"},
+	}
+	if len(p.Entries) != len(want) {
+		t.Fatalf("entries = %+v, want %+v", p.Entries, want)
+	}
+	for i := range want {
+		if p.Entries[i] != want[i] {
+			t.Errorf("entry %d = %+v, want %+v", i, p.Entries[i], want[i])
+		}
+	}
+}
+
+func TestPriorityReconcile_emptyIndexAppendsAll(t *testing.T) {
+	p := &Priority{}
+	actives := []PriorityEntry{
+		{Project: "a", Title: "1"},
+		{Project: "a", Title: "2"},
+	}
+	p.Reconcile(actives)
+	if len(p.Entries) != 2 {
+		t.Fatalf("entries = %+v, want 2", p.Entries)
+	}
+}
+
+func TestPriorityReconcile_preservesOrderOfSurvivors(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "p", Title: "third"},
+		{Project: "p", Title: "first"},
+		{Project: "p", Title: "second"},
+	}}
+	// Actives universe in some unrelated order — survivors keep index order.
+	actives := []PriorityEntry{
+		{Project: "p", Title: "first"},
+		{Project: "p", Title: "second"},
+		{Project: "p", Title: "third"},
+	}
+	p.Reconcile(actives)
+	if p.Entries[0].Title != "third" || p.Entries[1].Title != "first" || p.Entries[2].Title != "second" {
+		t.Errorf("survivor order lost: %+v", p.Entries)
+	}
+}
