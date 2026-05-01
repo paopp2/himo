@@ -79,7 +79,14 @@ Vim-style. Left pane is the task list, right pane previews the highlighted task'
 
 **Actions:** `Enter` open notes in editor, `e` edit title inline, `Space` cycle status, `o`/`O` new task, `d` delete, `!` block, `x` done, `-` cancel
 
+**Reorder:** `Shift+J`/`Shift+K` move active tasks down/up the priority list (in `[3] Active` filter or `s` by-status sort). Order persists across sessions in `<base_dir>/.himo/active-priority`.
+
 **Scope:** `Tab`/`Shift+Tab` switch project, `P` project picker, `A` all projects
+
+Active task priority is stored in `<base_dir>/.himo/active-priority`, one
+task per line as `<project>\t<title>`. The file is reconciled with current
+active tasks on every load — new actives are appended, deleted/renamed
+tasks are dropped.
 
 ## Config
 
