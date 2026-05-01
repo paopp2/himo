@@ -376,6 +376,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+		case "J":
+			m.reorder(+1)
+		case "K":
+			m.reorder(-1)
 		case "g":
 			m.cursor = 0
 		case "G":
@@ -614,6 +618,56 @@ func (m Model) visibleTaskLocations() []taskLoc {
 // isActiveOnlyFilter reports whether f narrows to a single active-only status.
 func isActiveOnlyFilter(f Filter) bool {
 	return !f.All && len(f.Statuses) == 1 && f.Statuses[0] == model.StatusActive
+}
+
+// reorder moves the cursor's active task one slot up (delta=-1) or down
+// (delta=+1) in the priority index, persists the index, and adjusts the
+// cursor to follow the moved task. No-op if the gesture is not applicable
+// in the current view, the task is not active, or the move is at the
+// boundary. Sets m.banner with a hint when the gesture is pressed in an
+// inapplicable view.
+func (m *Model) reorder(delta int) {
+	if !m.reorderEnabled() {
+		m.banner = "reorder available in [3] Active or by-status sort"
+		return
+	}
+	if m.priority == nil {
+		return
+	}
+	proj, doc, idx, ok := m.currentTaskItem()
+	if !ok {
+		return
+	}
+	task := doc.Items[idx].(store.TaskItem).Task
+	if task.Status != model.StatusActive {
+		m.banner = "reorder available in [3] Active or by-status sort"
+		return
+	}
+	var moved bool
+	if delta < 0 {
+		moved = m.priority.SwapUp(proj.Name, task.Title)
+	} else {
+		moved = m.priority.SwapDown(proj.Name, task.Title)
+	}
+	if !moved {
+		return
+	}
+	if err := m.priority.Save(); err != nil {
+		m.banner = "reorder save: " + err.Error()
+		return
+	}
+	// Cursor follows the task.
+	if delta < 0 && m.cursor > 0 {
+		m.cursor--
+	} else if delta > 0 && m.cursor+1 < len(m.visibleTasks()) {
+		m.cursor++
+	}
+	m.banner = ""
+}
+
+// reorderEnabled reports whether the current view supports reorder.
+func (m Model) reorderEnabled() bool {
+	return isActiveOnlyFilter(m.filter) || m.sort == SortStatus
 }
 
 // priorityRank returns the index of loc's task in the priority list, or

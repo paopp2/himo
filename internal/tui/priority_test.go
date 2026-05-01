@@ -119,6 +119,122 @@ func TestVisibleTasks_SortStatus_ActiveGroupOrdersByPriority(t *testing.T) {
 	}
 }
 
+func TestReorder_ShiftJ_movesTaskDownInActiveFilter(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [/] two\n- [/] three\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 0 // on "one"
+
+	out, _ := m.Update(keyRune('J'))
+	got := titles(out.(Model).visibleTasks())
+	want := []string{"two", "one", "three"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("row %d = %q, want %q (full %v)", i, got[i], want[i], got)
+		}
+	}
+	// Cursor follows the moved task.
+	if out.(Model).cursor != 1 {
+		t.Errorf("cursor = %d, want 1", out.(Model).cursor)
+	}
+}
+
+func TestReorder_ShiftK_movesTaskUpInActiveFilter(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [/] two\n- [/] three\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 2 // on "three"
+
+	out, _ := m.Update(keyRune('K'))
+	got := titles(out.(Model).visibleTasks())
+	want := []string{"one", "three", "two"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("row %d = %q, want %q (full %v)", i, got[i], want[i], got)
+		}
+	}
+	if out.(Model).cursor != 1 {
+		t.Errorf("cursor = %d, want 1", out.(Model).cursor)
+	}
+}
+
+func TestReorder_ShiftJ_atBottom_isNoOp(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [/] two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 1
+
+	out, _ := m.Update(keyRune('J'))
+	got := titles(out.(Model).visibleTasks())
+	if got[0] != "one" || got[1] != "two" {
+		t.Errorf("got %v, want unchanged", got)
+	}
+	if out.(Model).cursor != 1 {
+		t.Errorf("cursor moved on no-op")
+	}
+}
+
+func TestReorder_persistsToDisk(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [/] two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 0
+
+	_, _ = m.Update(keyRune('J'))
+
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pr.Entries) != 2 || pr.Entries[0].Title != "two" || pr.Entries[1].Title != "one" {
+		t.Errorf("disk state = %+v, want [two, one]", pr.Entries)
+	}
+}
+
 func TestVisibleTasks_AllProjectsActive_OrdersByGlobalPriority(t *testing.T) {
 	base := t.TempDir()
 	mkProj := func(name, body string) {
