@@ -795,7 +795,33 @@ func (m *Model) setStatus(s model.Status) {
 		return
 	}
 	m.commitUndo()
+	m.applyPriorityForStatusChange(proj.Name, old.Task, ti.Task)
 	m.clampCursor()
+}
+
+// applyPriorityForStatusChange updates the priority index when a task's
+// status crosses the active boundary. Idempotent for non-crossings.
+// Save errors set a banner but do not roll back the project save -- the
+// priority file will be reconciled on the next load.
+func (m *Model) applyPriorityForStatusChange(project string, oldT, newT model.Task) {
+	if m.priority == nil {
+		return
+	}
+	wasActive := oldT.Status == model.StatusActive
+	isActive := newT.Status == model.StatusActive
+	switch {
+	case wasActive && !isActive:
+		m.priority.Remove(project, oldT.Title)
+	case !wasActive && isActive:
+		m.priority.Append(project, newT.Title)
+	case wasActive && isActive && oldT.Title != newT.Title:
+		m.priority.Rename(project, oldT.Title, newT.Title)
+	default:
+		return
+	}
+	if err := m.priority.Save(); err != nil {
+		m.banner = "priority save: " + err.Error()
+	}
 }
 
 // saveWithBanner persists proj. Returns nil on success, the original error on

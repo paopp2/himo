@@ -290,6 +290,62 @@ func TestReorder_onNonActiveTask_inSortStatus_setsHint(t *testing.T) {
 	}
 }
 
+func TestSetStatus_activeToDone_removesFromPriority(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [/] two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 0
+	// 'x' -> done
+	_, _ = m.Update(keyRune('x'))
+
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pr.Entries) != 1 || pr.Entries[0].Title != "two" {
+		t.Errorf("priority after done = %+v, want [two]", pr.Entries)
+	}
+}
+
+func TestSetStatus_pendingToActive_appendsToPriority(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] one\n- [ ] two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{All: true}
+	m.cursor = 1 // on "two"
+	// 'a' -> active
+	_, _ = m.Update(keyRune('a'))
+
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pr.Entries) != 2 || pr.Entries[0].Title != "one" || pr.Entries[1].Title != "two" {
+		t.Errorf("priority after activate = %+v, want [one, two]", pr.Entries)
+	}
+}
+
 func TestVisibleTasks_AllProjectsActive_OrdersByGlobalPriority(t *testing.T) {
 	base := t.TempDir()
 	mkProj := func(name, body string) {
