@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/paopp2/himo/internal/model"
 )
 
 func TestLoadPriority_missingFileReturnsEmpty(t *testing.T) {
@@ -317,5 +319,61 @@ func TestPriorityAppend_duplicateIsNoOp(t *testing.T) {
 	p.Append("a", "x")
 	if len(p.Entries) != 1 {
 		t.Errorf("duplicate appended: %+v", p.Entries)
+	}
+}
+
+func TestActiveEntries_returnsOnlyActiveTasksInFileOrder(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [ ] pending one\n- [/] active one\n- [/] active two\n- [!] blocked one\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := LoadProject(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ActiveEntries([]*Project{p})
+	want := []PriorityEntry{
+		{Project: filepath.Base(dir), Title: "active one"},
+		{Project: filepath.Base(dir), Title: "active two"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("ActiveEntries = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("entry %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	_ = model.StatusActive // keep import used even if model unused above.
+}
+
+func TestActiveEntries_acrossMultipleProjects_alphabetical(t *testing.T) {
+	base := t.TempDir()
+	mk := func(name, body string) *Project {
+		dir := filepath.Join(base, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "active.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		p, err := LoadProject(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	// Pass projects in NON-alphabetical order; ActiveEntries must NOT resort.
+	pZ := mk("zproj", "- [/] z1\n")
+	pA := mk("aproj", "- [/] a1\n")
+	got := ActiveEntries([]*Project{pZ, pA})
+	want := []PriorityEntry{
+		{Project: "zproj", Title: "z1"},
+		{Project: "aproj", Title: "a1"},
+	}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("ActiveEntries respects caller's project order: got %+v, want %+v", got, want)
 	}
 }

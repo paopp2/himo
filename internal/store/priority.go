@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/paopp2/himo/internal/model"
 )
 
 // PriorityEntry identifies one active task in the priority index.
@@ -159,4 +161,27 @@ func (p *Priority) Append(project, title string) {
 		return
 	}
 	p.Entries = append(p.Entries, PriorityEntry{Project: project, Title: title})
+}
+
+// ActiveEntries returns one PriorityEntry per active task across the given
+// projects, in caller order (project order, then file order within each
+// project's active.md).
+func ActiveEntries(projects []*Project) []PriorityEntry {
+	var out []PriorityEntry
+	for _, p := range projects {
+		if p == nil || p.Active == nil {
+			continue
+		}
+		for _, it := range p.Active.Items {
+			ti, ok := it.(TaskItem)
+			if !ok {
+				continue
+			}
+			if ti.Task.Status != model.StatusActive {
+				continue
+			}
+			out = append(out, PriorityEntry{Project: p.Name, Title: ti.Task.Title})
+		}
+	}
+	return out
 }
