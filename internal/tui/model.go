@@ -931,6 +931,12 @@ func (m *Model) commitEdit() {
 		return
 	}
 	m.commitUndo()
+	if old.Task.Status == model.StatusActive && m.priority != nil {
+		m.priority.Rename(proj.Name, old.Task.Title, v)
+		if err := m.priority.Save(); err != nil {
+			m.banner = "priority save: " + err.Error()
+		}
+	}
 }
 
 // deleteCurrent removes the task under the cursor, persists, and clamps cursor.

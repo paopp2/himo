@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/paopp2/himo/internal/model"
 	"github.com/paopp2/himo/internal/store"
 )
@@ -343,6 +345,38 @@ func TestSetStatus_pendingToActive_appendsToPriority(t *testing.T) {
 	}
 	if len(pr.Entries) != 2 || pr.Entries[0].Title != "one" || pr.Entries[1].Title != "two" {
 		t.Errorf("priority after activate = %+v, want [one, two]", pr.Entries)
+	}
+}
+
+func TestEdit_renamesPriorityEntry(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "p")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "active.md"),
+		[]byte("- [/] old name\n- [/] other\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewModelFromBase(base, "p", StyleOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filter = Filter{Statuses: []model.Status{model.StatusActive}}
+	m.cursor = 0
+	// Enter edit mode and submit a new title.
+	out, _ := m.Update(keyRune('e'))
+	em := out.(Model)
+	em.editInput.SetValue("new name")
+	out2, _ := em.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_ = out2.(Model)
+
+	pr, err := store.LoadPriority(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pr.Entries) != 2 || pr.Entries[0].Title != "new name" {
+		t.Errorf("priority = %+v, want [new name, other]", pr.Entries)
 	}
 }
 
