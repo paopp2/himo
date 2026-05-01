@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/paopp2/himo/internal/model"
 )
 
 func TestLoadPriority_missingFileReturnsEmpty(t *testing.T) {
@@ -196,6 +194,22 @@ func TestPriorityReconcile_preservesOrderOfSurvivors(t *testing.T) {
 	}
 }
 
+func TestPriorityReconcile_dedupsDuplicateEntries(t *testing.T) {
+	p := &Priority{Entries: []PriorityEntry{
+		{Project: "p", Title: "x"},
+		{Project: "p", Title: "x"}, // accidental duplicate
+		{Project: "p", Title: "y"},
+	}}
+	actives := []PriorityEntry{
+		{Project: "p", Title: "x"},
+		{Project: "p", Title: "y"},
+	}
+	p.Reconcile(actives)
+	if len(p.Entries) != 2 || p.Entries[0].Title != "x" || p.Entries[1].Title != "y" {
+		t.Errorf("dedup failed: %+v", p.Entries)
+	}
+}
+
 func TestPriorityIndexOf(t *testing.T) {
 	p := &Priority{Entries: []PriorityEntry{
 		{Project: "a", Title: "x"},
@@ -346,10 +360,9 @@ func TestActiveEntries_returnsOnlyActiveTasksInFileOrder(t *testing.T) {
 			t.Errorf("entry %d = %+v, want %+v", i, got[i], want[i])
 		}
 	}
-	_ = model.StatusActive // keep import used even if model unused above.
 }
 
-func TestActiveEntries_acrossMultipleProjects_alphabetical(t *testing.T) {
+func TestActiveEntries_acrossMultipleProjects_preservesCallerOrder(t *testing.T) {
 	base := t.TempDir()
 	mk := func(name, body string) *Project {
 		dir := filepath.Join(base, name)

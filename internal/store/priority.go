@@ -85,13 +85,15 @@ func (p *Priority) Save() error {
 // 1. Any entry whose (project, title) is not in `actives` is dropped.
 // 2. Any (project, title) in `actives` not in p.Entries is appended in
 //    the order it appears in `actives`.
+// 3. Duplicate entries within p.Entries are de-duplicated to the first
+//    occurrence (defensive against externally-edited indexes).
 // Order of surviving entries is preserved.
 func (p *Priority) Reconcile(actives []PriorityEntry) {
 	have := make(map[PriorityEntry]bool, len(actives))
 	for _, e := range actives {
 		have[e] = true
 	}
-	kept := p.Entries[:0]
+	kept := make([]PriorityEntry, 0, len(actives))
 	keptSet := make(map[PriorityEntry]bool, len(p.Entries))
 	for _, e := range p.Entries {
 		if have[e] && !keptSet[e] {
