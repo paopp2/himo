@@ -116,6 +116,7 @@ type Model struct {
 	editOrig          string
 	allProjects       bool
 	allProjectsCache  []*store.Project
+	priority          *store.Priority
 	editingProjectDir string
 	undoStack         []historyEntry
 	redoStack         []historyEntry
@@ -153,12 +154,22 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 	if err != nil {
 		return Model{}, err
 	}
+	pr, err := store.LoadPriority(baseDir)
+	if err != nil {
+		return Model{}, err
+	}
+	allProjects := loadAllProjectsForPriority(baseDir, projects)
+	pr.Reconcile(store.ActiveEntries(allProjects))
+	if err := pr.Save(); err != nil {
+		return Model{}, err
+	}
 	st := NewStyles(opts)
 	return Model{
 		project:     p,
 		filter:      DefaultFilter(),
 		baseDir:     baseDir,
 		projects:    projects,
+		priority:    pr,
 		styles:      st,
 		searchInput: newStyledInput(st),
 		pickerInput: newStyledInput(st),
@@ -166,6 +177,24 @@ func NewModelFromBase(baseDir, name string, opts StyleOptions) (Model, error) {
 		editInput:   newStyledInput(st),
 	}, nil
 }
+
+// loadAllProjectsForPriority loads every project under baseDir for the
+// purpose of priority reconciliation. Errors are swallowed per-project so
+// a single corrupt project does not block startup.
+func loadAllProjectsForPriority(baseDir string, names []string) []*store.Project {
+	out := make([]*store.Project, 0, len(names))
+	for _, n := range names {
+		p, err := store.LoadProject(filepath.Join(baseDir, n))
+		if err != nil {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// priorityForTest exposes the priority index for tests in this package.
+func (m Model) priorityForTest() *store.Priority { return m.priority }
 
 // WithFilter returns m with its initial filter replaced. Used by main.go
 // to restore a persisted filter on launch.
